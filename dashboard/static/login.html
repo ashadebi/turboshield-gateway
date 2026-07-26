@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TurboShield — Login</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#e6edf3;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:16px;padding:36px;max-width:400px;width:100%}
+.shield{font-size:46px;text-align:center;display:block;margin-bottom:8px}
+h1{text-align:center;font-size:22px;margin-bottom:4px}
+.sub{text-align:center;color:#8b949e;font-size:13px;margin-bottom:24px}
+label{display:block;font-size:12px;color:#8b949e;margin:16px 0 6px}
+input{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e6edf3;padding:12px;font-size:14px}
+input:focus{outline:none;border-color:#3fb950}
+button{width:100%;margin-top:24px;background:#3fb950;color:#04260f;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:700;cursor:pointer}
+button:hover{filter:brightness(1.08)}
+.err{color:#f85149;font-size:13px;text-align:center;margin-top:14px;min-height:18px}
+</style></head>
+<body>
+<div class="card">
+  <div style="text-align:right;margin-bottom:4px">
+    <select id="lang" onchange="tr(this.value)" style="width:auto;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:5px 8px;font-size:12px">
+      <option value="id">🇮🇩 Indonesia</option><option value="en">🇬🇧 English</option>
+    </select>
+  </div>
+  <span class="shield">🛡️</span>
+  <h1>TurboShield Gateway</h1>
+  <p class="sub" id="t-sub">Masuk ke Panel Administrasi</p>
+  <label id="t-email">Email</label>
+  <input id="email" type="email" autocomplete="email"/>
+  <label id="t-pw">Password</label>
+  <input id="password" type="password" autocomplete="current-password"/>
+  <button onclick="doLogin()" id="t-btn">🔐 Masuk</button>
+  <div class="err" id="err"></div>
+</div>
+<script>
+const TR={'t-sub':{id:'Masuk ke Panel Administrasi',en:'Sign in to Admin Panel'},
+  't-email':{id:'Email',en:'Email'},'t-pw':{id:'Password',en:'Password'},'t-btn':{id:'🔐 Masuk',en:'🔐 Sign In'}};
+function tr(l){localStorage.setItem('ts_lang',l);document.getElementById('lang').value=l;
+  for(const id in TR){const e=document.getElementById(id);if(e)e.textContent=TR[id][l];}}
+tr(localStorage.getItem('ts_lang')||'id');
+async function doLogin(){
+  const email=document.getElementById('email').value.trim();
+  const password=document.getElementById('password').value;
+  const err=document.getElementById('err'); err.textContent='';
+  const b=new URLSearchParams({email,password});
+  try{
+    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    const j=await r.json();
+    if(!r.ok){err.textContent=j.detail||'Login gagal.';return;}
+    location.href='/';
+  }catch(e){err.textContent='Error jaringan: '+e.message;}
+}
+document.getElementById('password').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+</script>
+</body></html>

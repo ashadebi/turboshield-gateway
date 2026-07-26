@@ -1,0 +1,23 @@
+# Secrets & runtime data — JANGAN commit
+dashboard/data/
+waf/certs/
+waf/letsencrypt/
+waf/acme/
+waf/logs/
+waf/proxy-hosts/*.conf
+!waf/proxy-hosts/.keep
+_backup/
+*.key
+*.pem
+*_ed25519
+*.bak-*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db

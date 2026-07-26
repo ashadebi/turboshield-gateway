@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TurboShield Gateway — WAF Test Lab</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--line:#30363d;--txt:#e6edf3;--mut:#8b949e;--acc:#3fb950;--red:#f85149;--blu:#58a6ff;--amb:#d29922;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--txt);line-height:1.6;padding:0 0 60px}
+  header{background:linear-gradient(135deg,#1f2937,#111827);border-bottom:2px solid var(--acc);padding:28px 20px;text-align:center}
+  header h1{font-size:26px;letter-spacing:.5px}
+  header .shield{font-size:40px;display:block;margin-bottom:6px}
+  header p{color:var(--mut);font-size:14px;margin-top:6px}
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px}
+  .banner{background:#1a2332;border:1px solid var(--blu);border-radius:10px;padding:14px 18px;margin:22px 0;font-size:14px;color:#cdd9e5}
+  .banner b{color:var(--blu)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
+  .card h2{font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+  .card .desc{color:var(--mut);font-size:13px;margin-bottom:14px}
+  label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
+  input,textarea,select{width:100%;background:#0d1117;border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:10px 12px;font-size:14px;font-family:inherit}
+  input:focus,textarea:focus{outline:none;border-color:var(--blu)}
+  button{cursor:pointer;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;margin-top:14px;transition:.15s}
+  .btn-go{background:var(--acc);color:#04260f;width:100%}
+  .btn-go:hover{filter:brightness(1.1)}
+  .btn-atk{background:#2d1418;color:var(--red);border:1px solid var(--red);width:100%;margin-top:8px}
+  .btn-atk:hover{background:var(--red);color:#fff}
+  .payloads{margin-top:16px}
+  .payloads h3{font-size:13px;color:var(--amb);margin-bottom:8px;border-top:1px solid var(--line);padding-top:14px}
+  .result{margin-top:16px;padding:14px;border-radius:8px;font-size:13px;font-family:'Consolas',monospace;white-space:pre-wrap;word-break:break-word;display:none}
+  .result.ok{background:#0f2417;border:1px solid var(--acc);color:#7ee2a8;display:block}
+  .result.blk{background:#2d1418;border:1px solid var(--red);color:#ff9a92;display:block}
+  .result.err{background:#2a2412;border:1px solid var(--amb);color:#e8c56b;display:block}
+  footer{text-align:center;color:var(--mut);font-size:12px;margin-top:40px}
+  code{background:#0d1117;padding:2px 6px;border-radius:4px;color:var(--amb);font-size:12px}
+  .tag{display:inline-block;background:#0d2818;color:var(--acc);border:1px solid var(--acc);font-size:11px;padding:2px 8px;border-radius:20px;margin-left:6px}
+</style>
+</head>
+<body>
+<header>
+  <span class="shield">🛡️</span>
+  <h1>TurboShield Gateway <span class="tag">WAF Test Lab</span></h1>
+  <p>nginx + ModSecurity v3 + OWASP Core Rule Set — <b id="host"></b></p>
+</header>
+<div class="wrap">
+  <div class="banner">
+    <b>ℹ️ Cara pakai:</b> Halaman ini dilindungi WAF. Request <b>normal</b> akan lolos (200 OK), sedangkan
+    percobaan serangan (SQLi, XSS, Path Traversal, dll) akan <b>diblokir WAF (403 Forbidden)</b> sebelum
+    mencapai backend. Klik tombol payload untuk mencoba.
+  </div>
+
+  <div class="grid">
+    <!-- NORMAL -->
+    <div class="card">
+      <h2>✅ Uji Request Normal</h2>
+      <p class="desc">Pencarian & login wajar — seharusnya lolos WAF (200 OK).</p>
+      <label>Kata kunci pencarian</label>
+      <input id="q-normal" value="sepatu olahraga" />
+      <button class="btn-go" onclick="doSearch('q-normal')">🔍 Cari (GET /search)</button>
+
+      <label style="margin-top:18px">Username</label>
+      <input id="u-normal" value="agoes" />
+      <label>Password</label>
+      <input id="p-normal" type="password" value="rahasia123" />
+      <button class="btn-go" onclick="doLogin('u-normal','p-normal')">🔐 Login (POST /login)</button>
+    </div>
+
+    <!-- ATTACK -->
+    <div class="card">
+      <h2>🚨 Uji Serangan</h2>
+      <p class="desc">Payload berbahaya — seharusnya diblokir WAF (403).</p>
+
+      <div class="payloads">
+        <h3>💉 SQL Injection</h3>
+        <button class="btn-atk" onclick="attack('/search?q=' + encodeURIComponent(\"1' OR '1'='1\"))">' OR '1'='1</button>
+        <button class="btn-atk" onclick="attack('/search?q=' + encodeURIComponent('1 UNION SELECT username,password FROM users--'))">UNION SELECT ... FROM users</button>
+      </div>
+      <div class="payloads">
+        <h3>🩹 Cross-Site Scripting (XSS)</h3>
+        <button class="btn-atk" onclick="attack('/search?q=' + encodeURIComponent('<script>alert(1)</scr'+'ipt>'))">&lt;script&gt;alert(1)&lt;/script&gt;</button>
+        <button class="btn-atk" onclick="attack('/search?q=' + encodeURIComponent('<img src=x onerror=alert(document.cookie)>'))">&lt;img onerror=...&gt;</button>
+      </div>
+      <div class="payloads">
+        <h3>📂 Path Traversal / LFI</h3>
+        <button class="btn-atk" onclick="attack('/search?file=' + encodeURIComponent('../../../../etc/passwd'))">../../etc/passwd</button>
+      </div>
+      <div class="payloads">
+        <h3>💻 Command Injection</h3>
+        <button class="btn-atk" onclick="attack('/search?q=' + encodeURIComponent('test; cat /etc/passwd'))">; cat /etc/passwd</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="result" class="result"></div>
+
+  <div class="banner" style="margin-top:22px">
+    <b>⏱️ Uji Rate-Limit:</b> klik cepat berkali-kali — setelah melewati ambang, WAF membalas <code>429 Too Many Requests</code>.
+    <button class="btn-atk" style="max-width:220px" onclick="flood()">🌊 Kirim 30 request beruntun</button>
+  </div>
+</div>
+
+<footer>
+  TurboShield Gateway &middot; WAF Test Lab &middot; dibuat oleh Vio untuk kawan Agoes 👀<br>
+  Semua percobaan serangan di halaman ini murni untuk menguji efektivitas WAF.
+</footer>
+
+<script>
+document.getElementById('host').textContent = location.host;
+const box = document.getElementById('result');
+function show(cls,txt){box.className='result '+cls;box.textContent=txt;box.scrollIntoView({behavior:'smooth',block:'nearest'});}
+
+async function req(url,opts){
+  const t0=performance.now();
+  try{
+    const r = await fetch(url,opts);
+    const dt=(performance.now()-t0).toFixed(0);
+    const body = await r.text();
+    if(r.status===200){show('ok',`✅ 200 OK  (${dt}ms)\nRequest LOLOS WAF — diteruskan ke backend.\n\n${body.slice(0,400)}`);}
+    else if(r.status===403){show('blk',`🚫 403 FORBIDDEN  (${dt}ms)\nDIBLOKIR OLEH WAF (ModSecurity/OWASP CRS).\nPayload dikenali sebagai serangan.`);}
+    else if(r.status===429){show('blk',`🌊 429 TOO MANY REQUESTS  (${dt}ms)\nRate-limit WAF aktif — request dibatasi.`);}
+    else{show('err',`⚠️ ${r.status}  (${dt}ms)\n${body.slice(0,300)}`);}
+  }catch(e){show('err','⚠️ Error jaringan: '+e.message);}
+}
+function doSearch(id){const q=encodeURIComponent(document.getElementById(id).value);req('/search?q='+q);}
+function doLogin(u,p){const b=new URLSearchParams({username:document.getElementById(u).value,password:document.getElementById(p).value});req('/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});}
+function attack(path){req(path);}
+async function flood(){
+  show('err','🌊 Mengirim 30 request beruntun...');
+  let ok=0,blk=0,err=0;
+  for(let i=0;i<30;i++){
+    try{const r=await fetch('/search?q=flood'+i);if(r.status===200)ok++;else if(r.status===429)blk++;else err++;}catch(e){err++;}
+  }
+  show(blk>0?'blk':'ok',`🌊 Selesai 30 request:\n✅ 200 OK: ${ok}\n🚫 429 Rate-limited: ${blk}\n⚠️ lain: ${err}\n\n${blk>0?'Rate-limit WAF BEKERJA.':'Belum kena limit (naikkan jumlah/percepat).'}`);
+}
+</script>
+</body>
+</html>

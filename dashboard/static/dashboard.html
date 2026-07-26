@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TurboShield Gateway — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--line:#30363d;--txt:#e6edf3;--mut:#8b949e;--acc:#3fb950;--red:#f85149;--blu:#58a6ff;--amb:#d29922;--sidebar:#12161d}
+body.light{--bg:#f4f6fb;--card:#ffffff;--line:#d0d7de;--txt:#1a2138;--mut:#57606a;--sidebar:#1a2138}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--txt);display:flex;min-height:100vh}
+/* Sidebar */
+.sidebar{width:250px;background:var(--sidebar);border-right:1px solid var(--line);padding:20px 0;position:fixed;height:100vh;overflow-y:auto}
+.brand{padding:0 20px 20px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.brand h1{font-size:17px;display:flex;align-items:center;gap:8px}
+.brand .v{font-size:11px;color:var(--mut);margin-top:4px}
+.nav a{display:flex;align-items:center;gap:10px;padding:12px 20px;color:var(--mut);text-decoration:none;font-size:14px;cursor:pointer;border-left:3px solid transparent}
+.nav a:hover{background:#1a2029;color:var(--txt)}
+.nav a.active{background:#1a2029;color:var(--acc);border-left-color:var(--acc)}
+.nav .sec{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#4d5560;padding:14px 20px 6px}
+/* Main */
+.main{margin-left:250px;flex:1;padding:24px 28px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.topbar h2{font-size:20px}
+.topbar .user{font-size:13px;color:var(--mut)}
+.topbar .user b{color:var(--txt)}
+.btn-out{background:#2d1418;color:var(--red);border:1px solid var(--red);border-radius:7px;padding:7px 14px;font-size:13px;cursor:pointer;margin-left:12px}
+.page{display:none}.page.active{display:block}
+/* Cards */
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+@media(max-width:1000px){.cards{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+.stat .lbl{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px}
+.stat .num{font-size:28px;font-weight:700;margin-top:8px}
+.stat .sub{font-size:11px;color:var(--mut);margin-top:4px}
+.stat.g .num{color:var(--acc)}.stat.r .num{color:var(--red)}.stat.b .num{color:var(--blu)}.stat.a .num{color:var(--amb)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px}
+@media(max-width:1000px){.grid2{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
+.panel h3{font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--mut);font-weight:600;padding:8px;border-bottom:1px solid var(--line);font-size:11px;text-transform:uppercase}
+td{padding:8px;border-bottom:1px solid #21262d}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge.sqli{background:#3d1a1a;color:#ff8f8f}.badge.xss{background:#3d2a1a;color:#ffb86c}
+.badge.rce{background:#3d1a30;color:#ff8fd8}.badge.lfi{background:#1a2d3d;color:#8fcfff}
+.badge.anomaly{background:#2a2d1a;color:#dfff8f}.badge.def{background:#21262d;color:#8b949e}
+.mono{font-family:'Consolas',monospace;font-size:12px}
+.bar{height:8px;background:#21262d;border-radius:4px;overflow:hidden;margin-top:6px}
+.bar>div{height:100%;border-radius:4px}
+label{display:block;font-size:12px;color:var(--mut);margin:14px 0 6px}
+select,input,textarea{width:100%;background:#0d1117;border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:10px;font-size:14px;font-family:inherit}
+button.save{margin-top:18px;background:var(--acc);color:#04260f;border:none;border-radius:8px;padding:11px 20px;font-weight:700;cursor:pointer}
+.toggle-row{display:flex;gap:10px;margin-top:8px}
+.toggle-row .opt{flex:1;text-align:center;padding:12px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.toggle-row .opt.on{border-color:var(--acc);background:#0d2818;color:var(--acc)}
+.msg{margin-top:14px;padding:10px;border-radius:8px;font-size:13px;display:none}
+.msg.ok{background:#0f2417;border:1px solid var(--acc);color:#7ee2a8;display:block}
+.msg.err{background:#2d1418;border:1px solid var(--red);color:#ff9a92;display:block}
+.soon{background:#1a2332;border:1px dashed var(--blu);border-radius:10px;padding:20px;color:#cdd9e5;font-size:13px;text-align:center;margin-top:14px}
+.pill{font-size:11px;padding:2px 8px;border-radius:20px;background:#0d2818;color:var(--acc);border:1px solid var(--acc)}
+.pill.off{background:#2d1418;color:var(--red);border-color:var(--red)}
+.pill.det{background:#2a2412;color:var(--amb);border-color:var(--amb)}
+</style></head>
+<body>
+<div class="sidebar">
+  <div class="brand"><h1>🛡️ TurboShield</h1><div class="v">Gateway v1.0 · WAF Console</div></div>
+  <div class="nav" id="nav">
+    <div class="sec">Utama</div>
+    <a data-p="dash" class="active">📊 Dashboard</a>
+    <div class="sec">Keamanan</div>
+    <a data-p="waf">🛡️ WAF &amp; Security</a>
+    <a data-p="threats">🚨 Threat Log</a>
+    <div class="sec">Jaringan</div>
+    <a data-p="proxy">🌐 Proxy &amp; Routing</a>
+    <div class="sec">Kecerdasan</div>
+    <a data-p="ai">🤖 AI &amp; Automation</a>
+    <a data-p="integ">📡 Integrasi &amp; Monitoring</a>
+  </div>
+</div>
+<div class="main">
+  <div class="topbar">
+    <h2 id="ptitle">Dashboard</h2>
+    <div style="display:flex;align-items:center;gap:10px">
+      <select id="lang-sel" onchange="setLang(this.value)" style="width:auto;padding:6px 10px;font-size:13px">
+        <option value="id">🇮🇩 Indonesia</option>
+        <option value="en">🇬🇧 English</option>
+      </select>
+      <button id="theme-btn" onclick="toggleTheme()" style="background:#21262d;color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer">🌙</button>
+      <span class="user">👤 <b id="admin-email">admin</b></span>
+      <button class="btn-out" onclick="logout()" data-i18n="logout">Keluar</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="p-dash">
+    <div class="cards">
+      <div class="stat b"><div class="lbl">🖥️ CPU</div><div class="num" id="s-cpu">–</div><div class="bar"><div id="b-cpu" style="width:0;background:#58a6ff"></div></div></div>
+      <div class="stat a"><div class="lbl">🧠 Memori</div><div class="num" id="s-mem">–</div><div class="sub" id="s-mem-sub"></div></div>
+      <div class="stat g"><div class="lbl">💾 Disk</div><div class="num" id="s-disk">–</div><div class="sub" id="s-disk-sub"></div></div>
+      <div class="stat r"><div class="lbl">🚨 Ancaman Diblokir</div><div class="num" id="s-threat">–</div><div class="sub">total di log</div></div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><h3>📈 Serangan per Kategori</h3><canvas id="chart-cat" height="200"></canvas></div>
+      <div class="panel"><h3>🌡️ System Health</h3>
+        <table><tbody id="health-tbl"></tbody></table>
+      </div>
+    </div>
+    <div class="panel"><h3>🚨 Serangan Terbaru (Live Threat Feed)</h3>
+      <table><thead><tr><th>Waktu</th><th>IP</th><th>Method</th><th>URI</th><th>Kategori</th><th>Status</th></tr></thead>
+      <tbody id="recent-tbl"><tr><td colspan="6" style="color:#8b949e">Memuat…</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- WAF -->
+  <div class="page" id="p-waf">
+    <div class="panel">
+      <h3>🛡️ Engine Mode <span class="pill" id="waf-pill">–</span></h3>
+      <p style="color:#8b949e;font-size:13px">Atur cara kerja WAF terhadap request berbahaya.</p>
+      <div class="toggle-row" id="mode-toggle">
+        <div class="opt" data-m="On">🟢 Blocking<br><small>Blokir serangan (produksi)</small></div>
+        <div class="opt" data-m="DetectionOnly">🟡 Detection<br><small>Catat saja, tak blokir</small></div>
+        <div class="opt" data-m="Off">🔴 Off<br><small>WAF nonaktif</small></div>
+      </div>
+      <label>Anomaly Scoring Threshold (OWASP CRS) — makin kecil makin ketat</label>
+      <input type="number" id="thr" min="1" max="100" value="5"/>
+      <button class="save" onclick="saveWaf()">💾 Simpan &amp; Reload WAF</button>
+      <div class="msg" id="waf-msg"></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>✏️ Custom Rules</h3>
+      <p style="color:#8b949e;font-size:13px">Aturan khusus (whitelist IP, blokir User-Agent, rate-limit). Format ModSecurity SecLang.</p>
+      <textarea id="custom" rows="12" class="mono"></textarea>
+      <button class="save" onclick="saveCustom()">💾 Simpan Custom Rules &amp; Reload</button>
+      <div class="msg" id="custom-msg"></div>
+    </div>
+  </div>
+
+  <!-- THREATS -->
+  <div class="page" id="p-threats">
+    <div class="panel"><h3>🚨 Threat Log Lengkap</h3>
+      <table><thead><tr><th>Waktu</th><th>IP</th><th>Method</th><th>URI</th><th>Kategori</th><th>Pesan Rule</th></tr></thead>
+      <tbody id="threats-tbl"></tbody></table>
+    </div>
+  </div>
+
+  <!-- PROXY -->
+  <div class="page" id="p-proxy">
+    <div class="panel">
+      <h3>🌐 Proxy Hosts <button class="save" style="margin:0 0 0 auto;padding:7px 14px" onclick="openHostForm()">➕ Tambah Host</button></h3>
+      <table><thead><tr><th>Domain</th><th>Upstream</th><th>WAF</th><th>SSL</th><th>WS</th><th>Aksi</th></tr></thead>
+      <tbody id="hosts-tbl"><tr><td colspan="6" style="color:#8b949e">Memuat…</td></tr></tbody></table>
+    </div>
+
+    <!-- Form add/edit host -->
+    <div class="panel" id="host-form" style="margin-top:16px;display:none">
+      <h3 id="host-form-title">➕ Tambah Proxy Host</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div><label>Domain (contoh: app.teelee.my.id)</label><input id="f-domain" placeholder="app.teelee.my.id"/></div>
+        <div><label>Upstream / Backend (host:port)</label><input id="f-upstream" placeholder="192.168.1.10:3000"/></div>
+        <div><label>Scheme ke backend</label><select id="f-scheme"><option value="http">http</option><option value="https">https</option></select></div>
+        <div><label data-i18n="waf_protect">🛡️ Proteksi WAF (Coraza/ModSecurity)</label>
+          <select id="f-waf">
+            <option value="On">🟢 On — Blocking (blokir serangan)</option>
+            <option value="DetectionOnly">🟡 Detection Only (catat saja)</option>
+            <option value="Off">🔴 Off (tanpa WAF)</option>
+          </select>
+        </div>
+        <div style="grid-column:1/3"><label data-i18n="options">Opsi</label>
+          <div style="display:flex;gap:14px;margin-top:10px;font-size:13px">
+            <label style="margin:0"><input type="checkbox" id="f-ws" checked style="width:auto"> WebSocket</label>
+            <label style="margin:0"><input type="checkbox" id="f-exploit" checked style="width:auto"> Block Exploits</label>
+            <label style="margin:0"><input type="checkbox" id="f-forcessl" style="width:auto"> Force SSL</label>
+          </div>
+        </div>
+      </div>
+      <label>Custom Nginx Config (opsional — disisipkan dalam server block)</label>
+      <textarea id="f-custom" rows="5" class="mono" placeholder="# contoh:&#10;proxy_read_timeout 300s;&#10;add_header X-Custom yes;"></textarea>
+      <div style="margin-top:14px">
+        <button class="save" onclick="saveHost()">💾 Simpan &amp; Reload</button>
+        <button class="save" style="background:#30363d;color:#e6edf3" onclick="closeHostForm()">Batal</button>
+      </div>
+      <div class="msg" id="host-msg"></div>
+    </div>
+
+    <!-- SSL manager -->
+    <div class="panel" id="ssl-panel" style="margin-top:16px;display:none">
+      <h3>🔒 SSL untuk <span id="ssl-domain" class="pill"></span></h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div style="border:1px solid var(--line);border-radius:10px;padding:16px">
+          <h4 style="font-size:14px;margin-bottom:8px">🌐 Let's Encrypt (otomatis)</h4>
+          <p style="color:#8b949e;font-size:12px">Domain harus sudah mengarah ke IP server ini.</p>
+          <label>Email (opsional, utk notifikasi kedaluwarsa)</label>
+          <input id="le-email" placeholder="admin@teelee.my.id"/>
+          <button class="save" onclick="reqLE()">🔐 Terbitkan Sertifikat</button>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:10px;padding:16px">
+          <h4 style="font-size:14px;margin-bottom:8px">📤 Upload Sertifikat Sendiri</h4>
+          <label>Certificate (fullchain PEM)</label>
+          <textarea id="up-cert" rows="4" class="mono" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
+          <label>Private Key (PEM)</label>
+          <textarea id="up-key" rows="4" class="mono" placeholder="-----BEGIN PRIVATE KEY-----"></textarea>
+          <button class="save" onclick="uploadCert()">📤 Upload &amp; Aktifkan</button>
+        </div>
+      </div>
+      <div class="msg" id="ssl-msg"></div>
+      <div style="margin-top:12px"><button class="save" style="background:#30363d;color:#e6edf3" onclick="document.getElementById('ssl-panel').style.display='none'">Tutup</button></div>
+    </div>
+  </div>
+
+  <!-- AI -->
+  <div class="page" id="p-ai">
+    <div class="panel">
+      <h3>🤖 Integrasi Platform AI</h3>
+      <p style="color:#8b949e;font-size:13px">Sambungkan LLM untuk Log Intelligence — analisis otomatis log serangan. Pilih provider, isi kredensial, uji koneksi.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div><label>Provider AI</label><select id="ai-provider" onchange="onProviderChange()"></select></div>
+        <div><label>Model</label><input id="ai-model" placeholder="mis. gemini-2.0-flash"/></div>
+        <div id="ai-key-wrap"><label>API Key</label><input id="ai-key" type="password" placeholder="tempel API key (kosongkan = tak berubah)"/></div>
+        <div id="ai-endpoint-wrap"><label>Endpoint (untuk Ollama/Custom)</label><input id="ai-endpoint" placeholder="http://host:11434"/></div>
+      </div>
+      <label style="margin-top:10px"><input type="checkbox" id="ai-enabled" style="width:auto"> Aktifkan Log Intelligence</label>
+      <div style="margin-top:14px">
+        <button class="save" onclick="testAI()">🔌 Uji Koneksi</button>
+        <button class="save" onclick="saveAI()">💾 Simpan Konfigurasi</button>
+      </div>
+      <div class="msg" id="ai-msg"></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>🔔 n8n Automation (Alert Rules)</h3>
+      <p style="color:#8b949e;font-size:13px">Webhook n8n untuk memicu alert (mis. ke OpenClaw) saat anomali/serangan.</p>
+      <label>n8n Webhook URL</label>
+      <input id="n8n-webhook" placeholder="https://n8n.teelee.my.id/webhook/turboshield"/>
+      <button class="save" onclick="saveAI()">💾 Simpan</button>
+      <div class="msg" id="n8n-msg"></div>
+    </div>
+  </div>
+
+  <!-- INTEG -->
+  <div class="page" id="p-integ">
+    <div class="panel">
+      <h3>📡 LibreNMS Monitoring</h3>
+      <p style="color:#8b949e;font-size:13px">Tarik metrik perangkat jaringan dari LibreNMS via API.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div><label>URL LibreNMS</label><input id="ln-url" placeholder="https://librenms.teelee.my.id"/></div>
+        <div><label>X-Auth-Token</label><input id="ln-token" type="password" placeholder="token API (kosongkan = tak berubah)"/></div>
+      </div>
+      <div style="margin-top:14px">
+        <button class="save" onclick="testLN()">🔌 Uji Koneksi</button>
+        <button class="save" onclick="saveLN()">💾 Simpan</button>
+      </div>
+      <div class="msg" id="ln-msg"></div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h3>🤖 Telegram Bot (Notifikasi &amp; Alert)</h3>
+      <p style="color:#8b949e;font-size:13px">Bot untuk kirim alert serangan &amp; password admin. Buat bot via <b>@BotFather</b>, ambil token. Chat ID bisa dari <b>@userinfobot</b>.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div><label>Bot Token</label><input id="tg-token" type="password" placeholder="123456:ABC-... (kosongkan = tak berubah)"/></div>
+        <div><label>Chat ID (tujuan notifikasi)</label><input id="tg-chat" placeholder="mis. 8138695"/></div>
+      </div>
+      <label style="margin-top:10px"><input type="checkbox" id="tg-notify" checked style="width:auto"> Kirim password admin ke Telegram saat setup</label>
+      <div style="margin-top:14px">
+        <button class="save" onclick="testTG()">🔌 Uji Koneksi (kirim pesan tes)</button>
+        <button class="save" onclick="saveTG()">💾 Simpan</button>
+      </div>
+      <div class="msg" id="tg-msg"></div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h3>🔗 Wazuh SIEM</h3>
+      <div class="soon">🚧 Integrasi Wazuh (korelasi event SIEM) menyusul — beri tahu endpoint & kredensialnya.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let chartCat=null;
+const nav=document.getElementById('nav');
+const titles={dash:'Dashboard',waf:'WAF & Security',threats:'Threat Log',proxy:'Proxy & Routing',ai:'AI & Automation',integ:'Integrasi & Monitoring'};
+nav.addEventListener('click',e=>{const a=e.target.closest('a');if(!a)return;
+  document.querySelectorAll('.nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');
+  const p=a.dataset.p;document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.getElementById('p-'+p).classList.add('active');document.getElementById('ptitle').textContent=titles[p];
+  if(p==='waf')loadWaf();if(p==='threats')loadThreats();if(p==='proxy')loadHosts();if(p==='ai')loadAI();if(p==='integ')loadIntegrations();
+});
+function badge(c){const m={sqli:'SQL Injection',xss:'XSS',rce:'RCE',lfi:'LFI/Traversal',anomaly:'Anomaly'};
+  const cls=['sqli','xss','rce','lfi','anomaly'].includes(c)?c:'def';return `<span class="badge ${cls}">${m[c]||c}</span>`;}
+
+async function loadOverview(){
+  try{
+    const r=await fetch('/api/overview');if(r.status===401){location.href='/';return;}
+    const j=await r.json();
+    document.getElementById('admin-email').textContent=j.admin_email;
+    const h=j.health;
+    document.getElementById('s-cpu').textContent=h.cpu_percent+'%';
+    document.getElementById('b-cpu').style.width=h.cpu_percent+'%';
+    document.getElementById('s-mem').textContent=h.mem_percent+'%';
+    document.getElementById('s-mem-sub').textContent=h.mem_used_gb+' / '+h.mem_total_gb+' GB';
+    document.getElementById('s-disk').textContent=h.disk_percent+'%';
+    document.getElementById('s-disk-sub').textContent=h.disk_free_gb+' GB bebas';
+    document.getElementById('s-threat').textContent=j.threat_total;
+    // health table
+    const ht=document.getElementById('health-tbl');
+    ht.innerHTML=`
+      <tr><td>🖥️ CPU</td><td class="mono">${h.cpu_percent}%</td></tr>
+      <tr><td>🧠 Memori</td><td class="mono">${h.mem_used_gb} / ${h.mem_total_gb} GB (${h.mem_percent}%)</td></tr>
+      <tr><td>💾 Disk</td><td class="mono">${h.disk_free_gb} / ${h.disk_total_gb} GB bebas</td></tr>
+      <tr><td>🌡️ Suhu CPU</td><td class="mono">${h.temp_c!==null?h.temp_c+' °C':'N/A (VPS)'}</td></tr>
+      <tr><td>🛡️ WAF</td><td class="mono">${j.waf.state} / ${j.waf.health}</td></tr>
+      <tr><td>⏱️ Boot</td><td class="mono">${h.boot}</td></tr>`;
+    // recent
+    const rt=document.getElementById('recent-tbl');
+    if(!j.recent.length){rt.innerHTML='<tr><td colspan="6" style="color:#8b949e">Belum ada serangan tercatat. 🎉</td></tr>';}
+    else{rt.innerHTML=j.recent.map(t=>`<tr><td class="mono">${(t.time||'').slice(0,25)}</td><td class="mono">${t.ip}</td><td>${t.method}</td><td class="mono">${t.uri}</td><td>${t.categories.map(badge).join(' ')}</td><td class="mono">${t.status}</td></tr>`).join('');}
+    // chart
+    const cats=j.threat_by_cat;const labels=Object.keys(cats),data=Object.values(cats);
+    if(chartCat)chartCat.destroy();
+    chartCat=new Chart(document.getElementById('chart-cat'),{type:'doughnut',
+      data:{labels:labels.length?labels:['Belum ada'],datasets:[{data:data.length?data:[1],
+        backgroundColor:['#f85149','#d29922','#bc4fda','#58a6ff','#3fb950','#e3b341','#8b949e']}]},
+      options:{plugins:{legend:{position:'bottom',labels:{color:'#8b949e'}}}}});
+  }catch(e){console.error(e);}
+}
+async function loadWaf(){
+  const r=await fetch('/api/waf');const j=await r.json();
+  document.getElementById('thr').value=j.anomaly_threshold;
+  setPill(j.engine_mode);setToggle(j.engine_mode);
+  const cr=await fetch('/api/custom-rules');const cj=await cr.json();
+  document.getElementById('custom').value=cj.content||'';
+}
+let curMode='On';
+function setToggle(m){curMode=m;document.querySelectorAll('#mode-toggle .opt').forEach(o=>o.classList.toggle('on',o.dataset.m===m));}
+function setPill(m){const p=document.getElementById('waf-pill');p.textContent=m;p.className='pill'+(m==='Off'?' off':m==='DetectionOnly'?' det':'');}
+document.getElementById('mode-toggle').addEventListener('click',e=>{const o=e.target.closest('.opt');if(o)setToggle(o.dataset.m);});
+async function saveWaf(){
+  const b=new URLSearchParams({engine_mode:curMode,anomaly_threshold:document.getElementById('thr').value});
+  const m=document.getElementById('waf-msg');
+  try{const r=await fetch('/api/waf',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    const j=await r.json();
+    if(j.status==='ok'){m.className='msg ok';m.textContent='✅ Tersimpan & WAF di-reload. Mode: '+j.engine_mode+', threshold: '+j.anomaly_threshold;setPill(j.engine_mode);}
+    else{m.className='msg err';m.textContent='⚠️ Tersimpan tapi reload gagal: '+j.reload_msg;}
+  }catch(e){m.className='msg err';m.textContent='Error: '+e.message;}
+}
+async function saveCustom(){
+  const b=new URLSearchParams({content:document.getElementById('custom').value});
+  const m=document.getElementById('custom-msg');
+  try{const r=await fetch('/api/custom-rules',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    const j=await r.json();
+    if(j.status==='ok'){m.className='msg ok';m.textContent='✅ Custom rules tersimpan & WAF di-reload.';}
+    else{m.className='msg err';m.textContent='⚠️ Tersimpan tapi reload gagal: '+j.reload_msg;}
+  }catch(e){m.className='msg err';m.textContent='Error: '+e.message;}
+}
+async function loadThreats(){
+  const r=await fetch('/api/threats');const j=await r.json();const t=document.getElementById('threats-tbl');
+  if(!j.threats.length){t.innerHTML='<tr><td colspan="6" style="color:#8b949e">Belum ada serangan tercatat. 🎉</td></tr>';return;}
+  t.innerHTML=j.threats.map(x=>`<tr><td class="mono">${(x.time||'').slice(0,25)}</td><td class="mono">${x.ip}</td><td>${x.method}</td><td class="mono">${x.uri}</td><td>${x.categories.map(badge).join(' ')}</td><td class="mono" style="font-size:11px">${(x.messages||[]).join('; ').slice(0,80)}</td></tr>`).join('');
+}
+async function logout(){await fetch('/api/logout',{method:'POST'});location.href='/';}
+
+// ============ PROXY MANAGER ============
+let AI_PROVIDERS={}; let editingDomain=null;
+async function loadHosts(){
+  const r=await fetch('/api/proxy-hosts');const j=await r.json();
+  AI_PROVIDERS=j.ai_providers||{};
+  const t=document.getElementById('hosts-tbl');
+  if(!j.hosts.length){t.innerHTML='<tr><td colspan="6" style="color:#8b949e">Belum ada proxy host. Klik "Tambah Host".</td></tr>';return;}
+  t.innerHTML=j.hosts.map(h=>{
+    const ssl=h.ssl&&h.ssl.enabled;
+    const wm=h.waf_mode||'On';
+    const wafBadge=wm==='Off'?'<span class="pill off">🔴 off</span>':wm==='DetectionOnly'?'<span class="pill det">🟡 detect</span>':'<span class="pill">🟢 on</span>';
+    return `<tr>
+      <td class="mono">${h.domain}</td>
+      <td class="mono">${h.scheme}://${h.upstream}</td>
+      <td>${wafBadge}</td>
+      <td>${ssl?'<span class="pill">🔒 aktif</span>':'<span class="pill off">tidak</span>'}</td>
+      <td>${h.websocket?'✓':'–'}</td>
+      <td>
+        <button class="save" style="padding:4px 10px;margin:0" onclick='editHost(${JSON.stringify(JSON.stringify(h))})'>✏️</button>
+        <button class="save" style="padding:4px 10px;margin:0;background:#1f6feb;color:#fff" onclick="openSSL('${h.domain}')">🔒 SSL</button>
+        <button class="save" style="padding:4px 10px;margin:0;background:#2d1418;color:#f85149" onclick="delHost('${h.domain}')">🗑️</button>
+      </td></tr>`;
+  }).join('');
+}
+function openHostForm(){editingDomain=null;document.getElementById('host-form-title').textContent='➕ Tambah Proxy Host';
+  ['f-domain','f-upstream','f-custom'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('f-domain').disabled=false;
+  document.getElementById('f-scheme').value='http';document.getElementById('f-waf').value='On';
+  document.getElementById('f-ws').checked=true;document.getElementById('f-exploit').checked=true;document.getElementById('f-forcessl').checked=false;
+  document.getElementById('host-form').style.display='block';document.getElementById('host-msg').className='msg';}
+function closeHostForm(){document.getElementById('host-form').style.display='none';}
+function editHost(js){const h=JSON.parse(JSON.parse(js));editingDomain=h.domain;
+  document.getElementById('host-form-title').textContent='✏️ Edit: '+h.domain;
+  document.getElementById('f-domain').value=h.domain;document.getElementById('f-domain').disabled=true;
+  document.getElementById('f-upstream').value=h.upstream;document.getElementById('f-scheme').value=h.scheme||'http';
+  document.getElementById('f-waf').value=h.waf_mode||'On';
+  document.getElementById('f-ws').checked=!!h.websocket;document.getElementById('f-exploit').checked=!!h.block_exploits;
+  document.getElementById('f-forcessl').checked=!!(h.ssl&&h.ssl.force);
+  document.getElementById('f-custom').value=h.custom_config||'';
+  document.getElementById('host-form').style.display='block';document.getElementById('host-msg').className='msg';}
+async function saveHost(){
+  const b=new URLSearchParams({domain:document.getElementById('f-domain').value,upstream:document.getElementById('f-upstream').value,
+    scheme:document.getElementById('f-scheme').value,websocket:document.getElementById('f-ws').checked,
+    block_exploits:document.getElementById('f-exploit').checked,force_ssl:document.getElementById('f-forcessl').checked,
+    waf_mode:document.getElementById('f-waf').value,
+    custom_config:document.getElementById('f-custom').value});
+  const m=document.getElementById('host-msg');
+  try{const r=await fetch('/api/proxy-hosts',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    const j=await r.json();
+    if(!r.ok){m.className='msg err';m.textContent='⚠️ '+(j.detail||'Gagal');return;}
+    m.className='msg ok';m.textContent='✅ Host tersimpan & WAF di-reload.';loadHosts();setTimeout(closeHostForm,900);
+  }catch(e){m.className='msg err';m.textContent='Error: '+e.message;}
+}
+async function delHost(domain){if(!confirm('Hapus host '+domain+'?'))return;
+  await fetch('/api/proxy-hosts/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({domain})});
+  loadHosts();}
+function openSSL(domain){document.getElementById('ssl-domain').textContent=domain;
+  document.getElementById('ssl-panel').dataset.domain=domain;
+  document.getElementById('ssl-panel').style.display='block';document.getElementById('ssl-msg').className='msg';
+  document.getElementById('ssl-panel').scrollIntoView({behavior:'smooth'});}
+async function reqLE(){const domain=document.getElementById('ssl-panel').dataset.domain;const m=document.getElementById('ssl-msg');
+  m.className='msg';m.style.display='block';m.textContent='⏳ Meminta sertifikat Lets Encrypt… (bisa 10-30 detik)';
+  const b=new URLSearchParams({domain,le_email:document.getElementById('le-email').value});
+  try{const r=await fetch('/api/proxy-hosts/ssl-letsencrypt',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    const j=await r.json();
+    if(!r.ok){m.className='msg err';m.textContent='⚠️ '+(j.detail||'Gagal');return;}
+    m.className='msg ok';m.textContent='✅ '+j.message+(j.cert_info?'\\n'+j.cert_info:'');loadHosts();
+  }catch(e){m.className='msg err';m.textContent='Error: '+e.message;}
+}
+async function uploadCert(){const domain=document.getElementById('ssl-panel').dataset.domain;const m=document.getElementById('ssl-msg');
+  const b=new URLSearchParams({domain,cert_pem:document.getElementById('up-cert').value,key_pem:document.getElementById('up-key').value});
+  try{const r=await fetch('/api/proxy-hosts/ssl-upload',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    const j=await r.json();
+    if(!r.ok){m.className='msg err';m.textContent='⚠️ '+(j.detail||'Gagal');return;}
+    m.className='msg ok';m.textContent='✅ '+j.message+(j.cert_info?'\\n'+j.cert_info:'');loadHosts();
+  }catch(e){m.className='msg err';m.textContent='Error: '+e.message;}
+}
+
+// ============ AI INTEGRATION ============
+async function loadAI(){
+  const r=await fetch('/api/ai-config');const j=await r.json();
+  const sel=document.getElementById('ai-provider');
+  sel.innerHTML=Object.entries(j.providers).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('');
+  const c=j.config||{};const llm=c.llm||{};
+  if(llm.provider)sel.value=llm.provider;
+  document.getElementById('ai-model').value=llm.model||'';
+  document.getElementById('ai-key').value='';
+  document.getElementById('ai-key').placeholder=llm.api_key?('tersimpan: '+llm.api_key+' (kosongkan = tak berubah)'):'tempel API key';
+  document.getElementById('ai-endpoint').value=llm.endpoint||'';
+  document.getElementById('ai-enabled').checked=!!llm.enabled;
+  document.getElementById('n8n-webhook').value=(c.n8n||{}).webhook||'';
+  onProviderChange();
+}
+function onProviderChange(){const p=document.getElementById('ai-provider').value;const meta=AI_PROVIDERS[p]||{};
+  const needs=meta.needs||[];
+  document.getElementById('ai-key-wrap').style.display=needs.includes('api_key')?'block':'none';
+  document.getElementById('ai-endpoint-wrap').style.display=needs.includes('endpoint')?'block':'none';
+  if(meta.default_model&&!document.getElementById('ai-model').value)document.getElementById('ai-model').placeholder='mis. '+meta.default_model;
+}
+async function testAI(){const m=document.getElementById('ai-msg');m.className='msg';m.style.display='block';m.textContent='⏳ Menguji koneksi…';
+  const b=new URLSearchParams({provider:document.getElementById('ai-provider').value,api_key:document.getElementById('ai-key').value,
+    model:document.getElementById('ai-model').value,endpoint:document.getElementById('ai-endpoint').value});
+  try{const r=await fetch('/api/ai-config/test',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    const j=await r.json();m.className='msg '+(j.status==='ok'?'ok':'err');m.textContent=(j.status==='ok'?'✅ ':'⚠️ ')+j.message;
+  }catch(e){m.className='msg err';m.textContent='Error: '+e.message;}
+}
+async function saveAI(){const m=document.getElementById('ai-msg');
+  const b=new URLSearchParams({provider:document.getElementById('ai-provider').value,api_key:document.getElementById('ai-key').value,
+    model:document.getElementById('ai-model').value,endpoint:document.getElementById('ai-endpoint').value,
+    n8n_webhook:document.getElementById('n8n-webhook').value,enabled:document.getElementById('ai-enabled').checked});
+  try{const r=await fetch('/api/ai-config',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    const j=await r.json();m.className='msg ok';m.style.display='block';m.textContent='✅ Konfigurasi AI tersimpan.';
+    document.getElementById('n8n-msg').className='msg ok';document.getElementById('n8n-msg').textContent='✅ Tersimpan.';loadAI();
+  }catch(e){m.className='msg err';m.style.display='block';m.textContent='Error: '+e.message;}
+}
+
+// ============ LibreNMS ============
+async function loadIntegrations(){
+  const r=await fetch('/api/ai-config');const j=await r.json();const c=j.config||{};
+  const ln=c.librenms||{};document.getElementById('ln-url').value=ln.url||'';
+  document.getElementById('ln-token').placeholder=ln.token?('tersimpan: '+ln.token):'token API (kosongkan = tak berubah)';
+  const tg=c.telegram||{};document.getElementById('tg-chat').value=tg.chat_id||'';
+  document.getElementById('tg-token').placeholder=tg.token?('tersimpan: '+tg.token):'token bot (kosongkan = tak berubah)';
+  document.getElementById('tg-notify').checked=tg.notify_setup!==false;
+}
+async function testLN(){const m=document.getElementById('ln-msg');m.className='msg';m.style.display='block';m.textContent='⏳ Menguji…';
+  const b=new URLSearchParams({url:document.getElementById('ln-url').value,token:document.getElementById('ln-token').value});
+  try{const r=await fetch('/api/integration/librenms/test',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    const j=await r.json();m.className='msg '+(j.status==='ok'?'ok':'err');m.textContent=(j.status==='ok'?'✅ ':'⚠️ ')+j.message;
+  }catch(e){m.className='msg err';m.textContent='Error: '+e.message;}}
+async function saveLN(){const m=document.getElementById('ln-msg');
+  const b=new URLSearchParams({url:document.getElementById('ln-url').value,token:document.getElementById('ln-token').value});
+  try{const r=await fetch('/api/integration/librenms',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    await r.json();m.className='msg ok';m.style.display='block';m.textContent='✅ LibreNMS tersimpan.';loadIntegrations();
+  }catch(e){m.className='msg err';m.style.display='block';m.textContent='Error: '+e.message;}}
+
+// ============ Telegram ============
+async function testTG(){const m=document.getElementById('tg-msg');m.className='msg';m.style.display='block';m.textContent='⏳ Menguji & kirim pesan tes…';
+  const b=new URLSearchParams({token:document.getElementById('tg-token').value,chat_id:document.getElementById('tg-chat').value});
+  try{const r=await fetch('/api/integration/telegram/test',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    const j=await r.json();m.className='msg '+(j.status==='ok'?'ok':'err');m.textContent=(j.status==='ok'?'✅ ':'⚠️ ')+j.message;
+  }catch(e){m.className='msg err';m.textContent='Error: '+e.message;}}
+async function saveTG(){const m=document.getElementById('tg-msg');
+  const b=new URLSearchParams({token:document.getElementById('tg-token').value,chat_id:document.getElementById('tg-chat').value,notify_setup:document.getElementById('tg-notify').checked});
+  try{const r=await fetch('/api/integration/telegram',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    await r.json();m.className='msg ok';m.style.display='block';m.textContent='✅ Telegram tersimpan.';loadIntegrations();
+  }catch(e){m.className='msg err';m.style.display='block';m.textContent='Error: '+e.message;}}
+
+// ============ THEME ============
+function toggleTheme(){const light=document.body.classList.toggle('light');
+  localStorage.setItem('ts_theme',light?'light':'dark');
+  document.getElementById('theme-btn').textContent=light?'☀️':'🌙';}
+(function initTheme(){if(localStorage.getItem('ts_theme')==='light'){document.body.classList.add('light');
+  var tb=document.getElementById('theme-btn');if(tb)tb.textContent='☀️';}})();
+
+// ============ i18n (dictionary phrase-based, full coverage) ============
+const NAV={
+  id:{dash:'Dashboard',waf:'WAF & Security',threats:'Threat Log',proxy:'Proxy & Routing',ai:'AI & Automation',integ:'Integrasi & Monitoring'},
+  en:{dash:'Dashboard',waf:'WAF & Security',threats:'Threat Log',proxy:'Proxy & Routing',ai:'AI & Automation',integ:'Integrations & Monitoring'}
+};
+// Peta terjemahan frasa ID -> EN untuk seluruh teks statis
+const T={
+  'Utama':'Main','Keamanan':'Security','Jaringan':'Network','Kecerdasan':'Intelligence','Keluar':'Logout',
+  '🖥️ CPU':'🖥️ CPU','🧠 Memori':'🧠 Memory','💾 Disk':'💾 Disk','🚨 Ancaman Diblokir':'🚨 Threats Blocked','total di log':'total in log',
+  '📈 Serangan per Kategori':'📈 Attacks by Category','🌡️ System Health':'🌡️ System Health',
+  '🚨 Serangan Terbaru (Live Threat Feed)':'🚨 Recent Attacks (Live Threat Feed)',
+  'Waktu':'Time','Method':'Method','Kategori':'Category','Status':'Status','Pesan Rule':'Rule Message','Memuat…':'Loading…',
+  '🛡️ Engine Mode':'🛡️ Engine Mode','Atur cara kerja WAF terhadap request berbahaya.':'Configure how the WAF handles malicious requests.',
+  '🟢 Blocking':'🟢 Blocking','Blokir serangan (produksi)':'Block attacks (production)','🟡 Detection':'🟡 Detection',
+  'Catat saja, tak blokir':'Log only, no block','🔴 Off':'🔴 Off','WAF nonaktif':'WAF disabled',
+  'Anomaly Scoring Threshold (OWASP CRS) — makin kecil makin ketat':'Anomaly Scoring Threshold (OWASP CRS) — lower = stricter',
+  '💾 Simpan & Reload WAF':'💾 Save & Reload WAF','✏️ Custom Rules':'✏️ Custom Rules',
+  'Aturan khusus (whitelist IP, blokir User-Agent, rate-limit). Format ModSecurity SecLang.':'Custom rules (IP whitelist, block User-Agent, rate-limit). ModSecurity SecLang format.',
+  '💾 Simpan Custom Rules & Reload':'💾 Save Custom Rules & Reload','🚨 Threat Log Lengkap':'🚨 Full Threat Log',
+  '🌐 Proxy Hosts':'🌐 Proxy Hosts','➕ Tambah Host':'➕ Add Host','Upstream':'Upstream','Aksi':'Action',
+  '➕ Tambah Proxy Host':'➕ Add Proxy Host','Domain (contoh: app.teelee.my.id)':'Domain (e.g. app.teelee.my.id)',
+  'Upstream / Backend (host:port)':'Upstream / Backend (host:port)','Scheme ke backend':'Backend scheme',
+  '🛡️ Proteksi WAF (Coraza/ModSecurity)':'🛡️ WAF Protection (Coraza/ModSecurity)',
+  '🟢 On — Blocking (blokir serangan)':'🟢 On — Blocking (block attacks)','🟡 Detection Only (catat saja)':'🟡 Detection Only (log only)',
+  '🔴 Off (tanpa WAF)':'🔴 Off (no WAF)','Opsi':'Options',
+  'Custom Nginx Config (opsional — disisipkan dalam server block)':'Custom Nginx Config (optional — injected into server block)',
+  '💾 Simpan & Reload':'💾 Save & Reload','Batal':'Cancel','🔒 SSL untuk':'🔒 SSL for',
+  '🌐 Let\u0027s Encrypt (otomatis)':'🌐 Let\u0027s Encrypt (automatic)','Domain harus sudah mengarah ke IP server ini.':'Domain must already point to this server IP.',
+  'Email (opsional, utk notifikasi kedaluwarsa)':'Email (optional, for expiry notice)','🔐 Terbitkan Sertifikat':'🔐 Issue Certificate',
+  '📤 Upload Sertifikat Sendiri':'📤 Upload Your Own Certificate','Certificate (fullchain PEM)':'Certificate (fullchain PEM)',
+  'Private Key (PEM)':'Private Key (PEM)','📤 Upload & Aktifkan':'📤 Upload & Enable','Tutup':'Close',
+  '🤖 Integrasi Platform AI':'🤖 AI Platform Integration',
+  'Sambungkan LLM untuk Log Intelligence — analisis otomatis log serangan. Pilih provider, isi kredensial, uji koneksi.':'Connect an LLM for Log Intelligence — automatic attack-log analysis. Pick a provider, enter credentials, test the connection.',
+  'Provider AI':'AI Provider','Model':'Model','API Key':'API Key','Endpoint (untuk Ollama/Custom)':'Endpoint (for Ollama/Custom)',
+  'Aktifkan Log Intelligence':'Enable Log Intelligence','🔌 Uji Koneksi':'🔌 Test Connection','💾 Simpan Konfigurasi':'💾 Save Configuration',
+  '🔔 n8n Automation (Alert Rules)':'🔔 n8n Automation (Alert Rules)',
+  'Webhook n8n untuk memicu alert (mis. ke OpenClaw) saat anomali/serangan.':'n8n webhook to trigger alerts (e.g. to OpenClaw) on anomaly/attack.',
+  'n8n Webhook URL':'n8n Webhook URL','💾 Simpan':'💾 Save',
+  '📡 LibreNMS Monitoring':'📡 LibreNMS Monitoring','Tarik metrik perangkat jaringan dari LibreNMS via API.':'Pull network device metrics from LibreNMS via API.',
+  'URL LibreNMS':'LibreNMS URL','X-Auth-Token':'X-Auth-Token',
+  '🤖 Telegram Bot (Notifikasi & Alert)':'🤖 Telegram Bot (Notifications & Alerts)',
+  'Bot Token':'Bot Token','Chat ID (tujuan notifikasi)':'Chat ID (notification target)',
+  'Kirim password admin ke Telegram saat setup':'Send admin password to Telegram on setup',
+  '🔌 Uji Koneksi (kirim pesan tes)':'🔌 Test Connection (send test message)','🔗 Wazuh SIEM':'🔗 Wazuh SIEM',
+  'Integrasi Wazuh (korelasi event SIEM) menyusul — beri tahu endpoint & kredensialnya.':'Wazuh integration (SIEM event correlation) coming soon — provide the endpoint & credentials.',
+};
+let curLang=localStorage.getItem('ts_lang')||'id';
+let origHTML=null;
+function setLang(l){curLang=l;localStorage.setItem('ts_lang',l);location.reload();}
+function translateNode(root){
+  // translate text of leaf-ish elements & common attributes
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null);
+  const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+  nodes.forEach(n=>{const t=n.nodeValue.trim();if(t&&T[t])n.nodeValue=n.nodeValue.replace(t,T[t]);});
+  // placeholders
+  root.querySelectorAll('[placeholder]').forEach(e=>{const p=e.getAttribute('placeholder');if(T[p])e.setAttribute('placeholder',T[p]);});
+}
+function applyLang(){
+  // nav labels + sections
+  document.querySelectorAll('.nav a').forEach(a=>{const p=a.dataset.p;const icon=a.textContent.trim().split(' ')[0];a.innerHTML=icon+' '+NAV[curLang][p];});
+  document.querySelectorAll('.nav .sec').forEach(s=>{const t=s.textContent.trim();
+    const idmap={'Main':'Utama','Security':'Keamanan','Network':'Jaringan','Intelligence':'Kecerdasan'};
+    const base=idmap[t]||t;s.textContent=curLang==='en'?(T[base]||base):base;});
+  // titles
+  Object.keys(NAV[curLang]).forEach(k=>titles[k]=NAV[curLang][k]);
+  const active=document.querySelector('.nav a.active');if(active)document.getElementById('ptitle').textContent=titles[active.dataset.p];
+  // full content translate (EN) or restore (ID)
+  if(curLang==='en'){ document.querySelectorAll('.page, .topbar').forEach(translateNode); }
+  else if(origHTML!==null){ /* reload to restore ID cleanly */ }
+  document.getElementById('lang-sel').value=curLang;
+}
+
+loadOverview();setInterval(loadOverview,10000);applyLang();
+</script>
+</body></html>

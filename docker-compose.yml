@@ -1,0 +1,83 @@
+name: turboshield
+
+networks:
+  tsnet:
+    driver: bridge
+
+services:
+  # -------- Backend aplikasi test (dilindungi WAF) --------
+  testapp:
+    image: python:3.12-alpine
+    container_name: ts-testapp
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./testapp:/app:ro
+    command: ["python3", "/app/backend.py"]
+    networks: [tsnet]
+    expose:
+      - "8080"
+
+  # -------- WAF: nginx + ModSecurity v3 + OWASP CRS --------
+  waf:
+    image: owasp/modsecurity-crs:nginx-alpine
+    container_name: ts-waf
+    restart: unless-stopped
+    depends_on: [testapp]
+    networks: [tsnet]
+    ports:
+      - "80:8080"
+      - "443:8443"
+    environment:
+      BACKEND: "http://testapp:8080"
+      SERVER_NAME: "testing.teelee.my.id"
+      PORT: "8080"
+      SSL_PORT: "8443"
+      MODSEC_RULE_ENGINE: "On"
+      MODSEC_AUDIT_ENGINE: "RelevantOnly"
+      MODSEC_AUDIT_LOG_FORMAT: "JSON"
+      MODSEC_AUDIT_LOG_TYPE: "Serial"
+      MODSEC_AUDIT_LOG: "/var/log/turboshield/modsec_audit.log"
+      MODSEC_REQ_BODY_ACCESS: "On"
+      MODSEC_RESP_BODY_ACCESS: "On"
+      PARANOIA: "1"
+      ANOMALY_INBOUND: "5"
+      ANOMALY_OUTBOUND: "4"
+      BLOCKING_PARANOIA: "1"
+      MODSEC_STATUS_ENGINE: "Off"
+    volumes:
+      - ./waf/rules/aaa-turboshield-managed.conf:/opt/owasp-crs/rules/REQUEST-902-turboshield-managed.conf:ro
+      - ./waf/rules/turboshield-custom.conf:/opt/owasp-crs/rules/zzz-turboshield.conf:ro
+      - ./waf/rules/turboshield-bad-agents.data:/etc/modsecurity.d/turboshield-bad-agents.data:ro
+      - ./waf/realip.conf:/etc/nginx/conf.d/00-realip.conf:ro
+      - ./waf/certs/server.crt:/etc/nginx/conf/server.crt:ro
+      - ./waf/certs/server.key:/etc/nginx/conf/server.key:ro
+      - ./waf/proxy-hosts:/etc/nginx/conf.d/proxy-hosts:ro
+      - ./waf/proxy-include.conf:/etc/nginx/conf.d/00-proxy-include.conf:ro
+      - ./waf/certs:/etc/nginx/certs:ro
+      - ./waf/acme:/var/www/acme
+      - ./waf/logs:/var/log/turboshield
+
+  # -------- Dashboard administrasi (FastAPI) port 8181 --------
+  dashboard:
+    image: python:3.12-slim
+    container_name: ts-dashboard
+    restart: unless-stopped
+    networks: [tsnet]
+    ports:
+      - "8181:8181"
+    working_dir: /app
+    environment:
+      TS_WAF_CONTAINER: "ts-waf"
+      TS_AUDIT_LOG: "/waf/logs/modsec_audit.log"
+      TS_MANAGED_RULE: "/waf/rules/aaa-turboshield-managed.conf"
+      TS_CUSTOM_RULE: "/waf/rules/turboshield-custom.conf"
+      TS_DATA_DIR: "/app/data"
+      TS_HOST_ACME: "/root/turboshield/waf/acme"
+      TS_HOST_LE: "/root/turboshield/waf/letsencrypt"
+      TS_LE_LIVE: "/waf/letsencrypt/live"
+    volumes:
+      - ./dashboard:/app
+      - ./waf:/waf                              # baca audit log + tulis managed rules + proxy hosts + certs
+      - /var/run/docker.sock:/var/run/docker.sock   # reload WAF via docker
+    command: ["sh", "/app/start.sh"]

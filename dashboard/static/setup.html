@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TurboShield — Setup Awal</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#e6edf3;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:16px;padding:36px;max-width:460px;width:100%}
+.shield{font-size:46px;text-align:center;display:block;margin-bottom:8px}
+h1{text-align:center;font-size:22px;margin-bottom:4px}
+.sub{text-align:center;color:#8b949e;font-size:13px;margin-bottom:24px}
+label{display:block;font-size:12px;color:#8b949e;margin:16px 0 6px}
+input{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e6edf3;padding:12px;font-size:14px}
+input:focus{outline:none;border-color:#3fb950}
+button{width:100%;margin-top:24px;background:#3fb950;color:#04260f;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:700;cursor:pointer}
+button:hover{filter:brightness(1.08)}
+.step{background:#1a2332;border:1px solid #1f6feb;border-radius:8px;padding:12px 14px;font-size:13px;color:#cdd9e5;margin-bottom:8px}
+.done{display:none;text-align:center}
+.pw-box{background:#0d2818;border:1px solid #3fb950;border-radius:10px;padding:18px;margin:18px 0;font-family:'Consolas',monospace}
+.pw-box .lbl{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:1px}
+.pw-box .val{font-size:20px;color:#3fb950;font-weight:700;word-break:break-all;margin-top:4px}
+.warn{color:#d29922;font-size:12px;margin-top:12px}
+.err{color:#f85149;font-size:13px;text-align:center;margin-top:12px;min-height:18px}
+a.btn{display:block;text-decoration:none;text-align:center;margin-top:20px;background:#1f6feb;color:#fff;border-radius:8px;padding:13px;font-weight:700}
+</style></head>
+<body>
+<div class="card">
+  <div style="text-align:right;margin-bottom:4px">
+    <select id="lang" onchange="tr(this.value)" style="width:auto;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:5px 8px;font-size:12px">
+      <option value="id">🇮🇩 Indonesia</option><option value="en">🇬🇧 English</option>
+    </select>
+  </div>
+  <div id="form-view">
+    <span class="shield">🛡️</span>
+    <h1>TurboShield Gateway</h1>
+    <p class="sub" id="t-sub">Penyiapan Awal — Akun Administrator</p>
+    <div class="step" id="t-step">👋 Selamat datang! Ini pertama kali sistem dijalankan. Masukkan <b>email admin</b>. Password kuat akan <b>dibuatkan otomatis</b> dan ditampilkan sekali.</div>
+    <label id="t-lbl-email">Email Administrator</label>
+    <input id="email" type="email" placeholder="admin@teelee.my.id" autocomplete="email"/>
+    <button onclick="doSetup()" id="t-btn">🚀 Buat Akun & Generate Password</button>
+    <div class="err" id="err"></div>
+  </div>
+  <div class="done" id="done-view">
+    <span class="shield">✅</span>
+    <h1 id="t-done-h">Akun Admin Dibuat</h1>
+    <p class="sub" id="t-done-sub">Simpan kredensial ini baik-baik</p>
+    <div class="pw-box"><div class="lbl">Email</div><div class="val" id="d-email" style="font-size:15px;color:#e6edf3"></div></div>
+    <div class="pw-box"><div class="lbl" id="t-pw-lbl">Password (generated)</div><div class="val" id="d-pw"></div></div>
+    <div class="warn" id="t-warn">⚠️ Password ini hanya ditampilkan SEKARANG. Password juga dikirim ke Telegram admin. Salin & simpan sebelum lanjut.</div>
+    <a class="btn" href="/" id="t-next">➡️ Lanjut ke Halaman Login</a>
+  </div>
+</div>
+<script>
+const TR={
+  't-sub':{id:'Penyiapan Awal — Akun Administrator',en:'Initial Setup — Administrator Account'},
+  't-step':{id:'👋 Selamat datang! Ini pertama kali sistem dijalankan. Masukkan <b>email admin</b>. Password kuat akan <b>dibuatkan otomatis</b> dan ditampilkan sekali.',en:'👋 Welcome! This is the first run. Enter the <b>admin email</b>. A strong password will be <b>auto-generated</b> and shown once.'},
+  't-lbl-email':{id:'Email Administrator',en:'Administrator Email'},
+  't-btn':{id:'🚀 Buat Akun & Generate Password',en:'🚀 Create Account & Generate Password'},
+  't-done-h':{id:'Akun Admin Dibuat',en:'Admin Account Created'},
+  't-done-sub':{id:'Simpan kredensial ini baik-baik',en:'Keep these credentials safe'},
+  't-pw-lbl':{id:'Password (generated)',en:'Password (generated)'},
+  't-warn':{id:'⚠️ Password ini hanya ditampilkan SEKARANG. Password juga dikirim ke Telegram admin. Salin & simpan sebelum lanjut.',en:'⚠️ This password is shown ONLY NOW. It is also sent to the admin Telegram. Copy & save it before continuing.'},
+  't-next':{id:'➡️ Lanjut ke Halaman Login',en:'➡️ Continue to Login'}
+};
+function tr(l){localStorage.setItem('ts_lang',l);document.getElementById('lang').value=l;
+  for(const id in TR){const e=document.getElementById(id);if(e)e.innerHTML=TR[id][l];}}
+tr(localStorage.getItem('ts_lang')||'id');
+async function doSetup(){
+  const email=document.getElementById('email').value.trim();
+  const err=document.getElementById('err'); err.textContent='';
+  if(!email.includes('@')){err.textContent='Masukkan email yang valid.';return;}
+  const b=new URLSearchParams({email});
+  try{
+    const r=await fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    const j=await r.json();
+    if(!r.ok){err.textContent=j.detail||'Gagal setup.';return;}
+    document.getElementById('d-email').textContent=j.email;
+    document.getElementById('d-pw').textContent=j.password;
+    document.getElementById('form-view').style.display='none';
+    document.getElementById('done-view').style.display='block';
+  }catch(e){err.textContent='Error jaringan: '+e.message;}
+}
+document.getElementById('email').addEventListener('keydown',e=>{if(e.key==='Enter')doSetup();});
+</script>
+</body></html>

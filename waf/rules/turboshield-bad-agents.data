@@ -1,0 +1,11 @@
+# Daftar User-Agent scanner/tools yang diblokir TurboShield (satu per baris, match substring)
+sqlmap
+nikto
+nmap
+masscan
+nessus
+acunetix
+wpscan
+dirbuster
+gobuster
+havij
