@@ -1,24 +1,26 @@
 <!DOCTYPE html>
 <html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TurboShield — Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#e6edf3;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.card{background:#161b22;border:1px solid #30363d;border-radius:16px;padding:36px;max-width:400px;width:100%}
+body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,#1A2138 0%,#4058B0 100%);color:#1A2138;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#F5F6FA;border:1px solid #e1e5f0;border-radius:16px;padding:36px;max-width:400px;width:100%;box-shadow:0 20px 50px rgba(26,33,56,.35)}
 .shield{font-size:46px;text-align:center;display:block;margin-bottom:8px}
-h1{text-align:center;font-size:22px;margin-bottom:4px}
-.sub{text-align:center;color:#8b949e;font-size:13px;margin-bottom:24px}
-label{display:block;font-size:12px;color:#8b949e;margin:16px 0 6px}
-input{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e6edf3;padding:12px;font-size:14px}
-input:focus{outline:none;border-color:#3fb950}
-button{width:100%;margin-top:24px;background:#3fb950;color:#04260f;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:700;cursor:pointer}
-button:hover{filter:brightness(1.08)}
-.err{color:#f85149;font-size:13px;text-align:center;margin-top:14px;min-height:18px}
+h1{text-align:center;font-size:22px;margin-bottom:4px;font-family:'Poppins',sans-serif;color:#1A2138}
+.sub{text-align:center;color:#6b7394;font-size:13px;margin-bottom:24px}
+label{display:block;font-size:12px;color:#6b7394;margin:16px 0 6px;font-weight:500}
+input{width:100%;background:#fff;border:1px solid #d7dcec;border-radius:8px;color:#1A2138;padding:12px;font-size:14px;font-family:inherit}
+input:focus{outline:none;border-color:#4058B0;box-shadow:0 0 0 3px rgba(64,88,176,.15)}
+button{width:100%;margin-top:24px;background:#4058B0;color:#fff;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
+button:hover{background:#34489a}
+.err{color:#d64550;font-size:13px;text-align:center;margin-top:14px;min-height:18px}
 </style></head>
 <body>
 <div class="card">
   <div style="text-align:right;margin-bottom:4px">
-    <select id="lang" onchange="tr(this.value)" style="width:auto;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:5px 8px;font-size:12px">
+    <select id="lang" onchange="tr(this.value)" style="width:auto;background:#fff;border:1px solid #d7dcec;border-radius:6px;color:#1A2138;padding:5px 8px;font-size:12px">
       <option value="id">🇮🇩 Indonesia</option><option value="en">🇬🇧 English</option>
     </select>
   </div>

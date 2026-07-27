@@ -2,63 +2,77 @@
 <html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TurboShield Gateway — Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0d1117;--card:#161b22;--line:#30363d;--txt:#e6edf3;--mut:#8b949e;--acc:#3fb950;--red:#f85149;--blu:#58a6ff;--amb:#d29922;--sidebar:#12161d}
-body.light{--bg:#f4f6fb;--card:#ffffff;--line:#d0d7de;--txt:#1a2138;--mut:#57606a;--sidebar:#1a2138}
+:root{
+  --navy:#1A2138; --blue:#4058B0; --lav:#EDF0F8; --page:#F5F6FA;
+  --bg:#F5F6FA; --card:#ffffff; --line:#e1e5f0; --txt:#1A2138; --mut:#6b7394;
+  --acc:#4058B0; --red:#d64550; --blu:#4058B0; --amb:#c77f2e; --sidebar:#1A2138;
+}
+body.dark{
+  --bg:#1A2138; --card:#232c47; --line:#33406a; --txt:#EDF0F8; --mut:#9aa3c7;
+  --lav:#2c3658; --page:#1A2138; --sidebar:#141a2e;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--txt);display:flex;min-height:100vh}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--txt);display:flex;min-height:100vh}
+h1,h2,h3,.brand h1{font-family:'Poppins','Inter',sans-serif}
 /* Sidebar */
 .sidebar{width:250px;background:var(--sidebar);border-right:1px solid var(--line);padding:20px 0;position:fixed;height:100vh;overflow-y:auto}
-.brand{padding:0 20px 20px;border-bottom:1px solid var(--line);margin-bottom:12px}
-.brand h1{font-size:17px;display:flex;align-items:center;gap:8px}
-.brand .v{font-size:11px;color:var(--mut);margin-top:4px}
-.nav a{display:flex;align-items:center;gap:10px;padding:12px 20px;color:var(--mut);text-decoration:none;font-size:14px;cursor:pointer;border-left:3px solid transparent}
-.nav a:hover{background:#1a2029;color:var(--txt)}
-.nav a.active{background:#1a2029;color:var(--acc);border-left-color:var(--acc)}
-.nav .sec{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#4d5560;padding:14px 20px 6px}
+.brand{padding:0 20px 20px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:12px}
+.brand h1{font-size:18px;display:flex;align-items:center;gap:8px;color:#fff}
+.brand .v{font-size:11px;color:#9aa3c7;margin-top:4px}
+.nav a{display:flex;align-items:center;gap:10px;padding:12px 20px;color:#c3c9e0;text-decoration:none;font-size:14px;cursor:pointer;border-left:3px solid transparent;font-weight:500}
+.nav a:hover{background:rgba(64,88,176,.25);color:#fff}
+.nav a.active{background:var(--blue);color:#fff;border-left-color:#8ea1e8}
+.nav .sec{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#7079a3;padding:14px 20px 6px}
 /* Main */
 .main{margin-left:250px;flex:1;padding:24px 28px}
 .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
-.topbar h2{font-size:20px}
+.topbar h2{font-size:20px;color:var(--navy)}
 .topbar .user{font-size:13px;color:var(--mut)}
 .topbar .user b{color:var(--txt)}
-.btn-out{background:#2d1418;color:var(--red);border:1px solid var(--red);border-radius:7px;padding:7px 14px;font-size:13px;cursor:pointer;margin-left:12px}
+.btn-out{background:#fff;color:var(--red);border:1px solid var(--red);border-radius:7px;padding:7px 14px;font-size:13px;cursor:pointer;margin-left:12px;font-weight:600}
+.btn-out:hover{background:var(--red);color:#fff}
 .page{display:none}.page.active{display:block}
 /* Cards */
 .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
 @media(max-width:1000px){.cards{grid-template-columns:repeat(2,1fr)}}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
-.stat .lbl{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px}
-.stat .num{font-size:28px;font-weight:700;margin-top:8px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 2px 8px rgba(26,33,56,.05)}
+.stat .lbl{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px;font-weight:500}
+.stat .num{font-size:28px;font-weight:700;margin-top:8px;color:var(--navy);font-family:'Poppins',sans-serif}
 .stat .sub{font-size:11px;color:var(--mut);margin-top:4px}
-.stat.g .num{color:var(--acc)}.stat.r .num{color:var(--red)}.stat.b .num{color:var(--blu)}.stat.a .num{color:var(--amb)}
+.stat.g .num{color:var(--blue)}.stat.r .num{color:var(--red)}.stat.b .num{color:var(--blue)}.stat.a .num{color:var(--amb)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px}
 @media(max-width:1000px){.grid2{grid-template-columns:1fr}}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
-.panel h3{font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 2px 8px rgba(26,33,56,.05)}
+.panel h3{font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:8px;color:var(--navy)}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;color:var(--mut);font-weight:600;padding:8px;border-bottom:1px solid var(--line);font-size:11px;text-transform:uppercase}
-td{padding:8px;border-bottom:1px solid #21262d}
+th{text-align:left;color:var(--mut);font-weight:600;padding:9px;border-bottom:2px solid var(--line);font-size:11px;text-transform:uppercase;background:var(--lav)}
+td{padding:9px;border-bottom:1px solid var(--lav);color:var(--txt)}
+tbody tr:hover{background:var(--lav)}
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
-.badge.sqli{background:#3d1a1a;color:#ff8f8f}.badge.xss{background:#3d2a1a;color:#ffb86c}
-.badge.rce{background:#3d1a30;color:#ff8fd8}.badge.lfi{background:#1a2d3d;color:#8fcfff}
-.badge.anomaly{background:#2a2d1a;color:#dfff8f}.badge.def{background:#21262d;color:#8b949e}
-.mono{font-family:'Consolas',monospace;font-size:12px}
-.bar{height:8px;background:#21262d;border-radius:4px;overflow:hidden;margin-top:6px}
-.bar>div{height:100%;border-radius:4px}
-label{display:block;font-size:12px;color:var(--mut);margin:14px 0 6px}
-select,input,textarea{width:100%;background:#0d1117;border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:10px;font-size:14px;font-family:inherit}
-button.save{margin-top:18px;background:var(--acc);color:#04260f;border:none;border-radius:8px;padding:11px 20px;font-weight:700;cursor:pointer}
+.badge.sqli{background:#fde8e8;color:#c0392b}.badge.xss{background:#fdf0e3;color:#b9761f}
+.badge.rce{background:#f6e8f5;color:#a4359a}.badge.lfi{background:#e5edfb;color:#2f4fb0}
+.badge.anomaly{background:#eef6e6;color:#5a8a2e}.badge.def{background:var(--lav);color:#6b7394}
+.mono{font-family:'SFMono-Regular',Consolas,monospace;font-size:12px}
+.bar{height:8px;background:var(--lav);border-radius:4px;overflow:hidden;margin-top:6px}
+.bar>div{height:100%;border-radius:4px;background:var(--blue)}
+label{display:block;font-size:12px;color:var(--mut);margin:14px 0 6px;font-weight:500}
+select,input,textarea{width:100%;background:#fff;border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:10px;font-size:14px;font-family:inherit}
+select:focus,input:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(64,88,176,.12)}
+button.save{margin-top:18px;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:11px 20px;font-weight:600;cursor:pointer;font-family:inherit}
+button.save:hover{background:#34489a}
 .toggle-row{display:flex;gap:10px;margin-top:8px}
-.toggle-row .opt{flex:1;text-align:center;padding:12px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
-.toggle-row .opt.on{border-color:var(--acc);background:#0d2818;color:var(--acc)}
+.toggle-row .opt{flex:1;text-align:center;padding:12px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;background:#fff}
+.toggle-row .opt.on{border-color:var(--blue);background:var(--lav);color:var(--blue)}
 .msg{margin-top:14px;padding:10px;border-radius:8px;font-size:13px;display:none}
-.msg.ok{background:#0f2417;border:1px solid var(--acc);color:#7ee2a8;display:block}
-.msg.err{background:#2d1418;border:1px solid var(--red);color:#ff9a92;display:block}
-.soon{background:#1a2332;border:1px dashed var(--blu);border-radius:10px;padding:20px;color:#cdd9e5;font-size:13px;text-align:center;margin-top:14px}
-.pill{font-size:11px;padding:2px 8px;border-radius:20px;background:#0d2818;color:var(--acc);border:1px solid var(--acc)}
-.pill.off{background:#2d1418;color:var(--red);border-color:var(--red)}
-.pill.det{background:#2a2412;color:var(--amb);border-color:var(--amb)}
+.msg.ok{background:#e8f5ec;border:1px solid #57b877;color:#2c7a4b;display:block}
+.msg.err{background:#fde8e8;border:1px solid var(--red);color:#c0392b;display:block}
+.soon{background:var(--lav);border:1px dashed var(--blue);border-radius:10px;padding:20px;color:var(--navy);font-size:13px;text-align:center;margin-top:14px}
+.pill{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--lav);color:var(--blue);border:1px solid #b9c4e8}
+.pill.off{background:#fde8e8;color:var(--red);border-color:#f0b8bc}
+.pill.det{background:#fdf0e3;color:var(--amb);border-color:#e8c99f}
 </style></head>
 <body>
 <div class="sidebar">
@@ -84,7 +98,7 @@ button.save{margin-top:18px;background:var(--acc);color:#04260f;border:none;bord
         <option value="id">🇮🇩 Indonesia</option>
         <option value="en">🇬🇧 English</option>
       </select>
-      <button id="theme-btn" onclick="toggleTheme()" style="background:#21262d;color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer">🌙</button>
+      <button id="theme-btn" onclick="toggleTheme()" style="background:var(--lav);color:var(--blue);border:1px solid var(--line);border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer;font-weight:600">🌙</button>
       <span class="user">👤 <b id="admin-email">admin</b></span>
       <button class="btn-out" onclick="logout()" data-i18n="logout">Keluar</button>
     </div>
@@ -93,7 +107,7 @@ button.save{margin-top:18px;background:var(--acc);color:#04260f;border:none;bord
   <!-- DASHBOARD -->
   <div class="page active" id="p-dash">
     <div class="cards">
-      <div class="stat b"><div class="lbl">🖥️ CPU</div><div class="num" id="s-cpu">–</div><div class="bar"><div id="b-cpu" style="width:0;background:#58a6ff"></div></div></div>
+      <div class="stat b"><div class="lbl">🖥️ CPU</div><div class="num" id="s-cpu">–</div><div class="bar"><div id="b-cpu" style="width:0;background:var(--blue)"></div></div></div>
       <div class="stat a"><div class="lbl">🧠 Memori</div><div class="num" id="s-mem">–</div><div class="sub" id="s-mem-sub"></div></div>
       <div class="stat g"><div class="lbl">💾 Disk</div><div class="num" id="s-disk">–</div><div class="sub" id="s-disk-sub"></div></div>
       <div class="stat r"><div class="lbl">🚨 Ancaman Diblokir</div><div class="num" id="s-threat">–</div><div class="sub">total di log</div></div>
@@ -106,7 +120,7 @@ button.save{margin-top:18px;background:var(--acc);color:#04260f;border:none;bord
     </div>
     <div class="panel"><h3>🚨 Serangan Terbaru (Live Threat Feed)</h3>
       <table><thead><tr><th>Waktu</th><th>IP</th><th>Method</th><th>URI</th><th>Kategori</th><th>Status</th></tr></thead>
-      <tbody id="recent-tbl"><tr><td colspan="6" style="color:#8b949e">Memuat…</td></tr></tbody></table>
+      <tbody id="recent-tbl"><tr><td colspan="6" style="color:var(--mut)">Memuat…</td></tr></tbody></table>
     </div>
   </div>
 
@@ -114,7 +128,7 @@ button.save{margin-top:18px;background:var(--acc);color:#04260f;border:none;bord
   <div class="page" id="p-waf">
     <div class="panel">
       <h3>🛡️ Engine Mode <span class="pill" id="waf-pill">–</span></h3>
-      <p style="color:#8b949e;font-size:13px">Atur cara kerja WAF terhadap request berbahaya.</p>
+      <p style="color:var(--mut);font-size:13px">Atur cara kerja WAF terhadap request berbahaya.</p>
       <div class="toggle-row" id="mode-toggle">
         <div class="opt" data-m="On">🟢 Blocking<br><small>Blokir serangan (produksi)</small></div>
         <div class="opt" data-m="DetectionOnly">🟡 Detection<br><small>Catat saja, tak blokir</small></div>
@@ -127,7 +141,7 @@ button.save{margin-top:18px;background:var(--acc);color:#04260f;border:none;bord
     </div>
     <div class="panel" style="margin-top:16px">
       <h3>✏️ Custom Rules</h3>
-      <p style="color:#8b949e;font-size:13px">Aturan khusus (whitelist IP, blokir User-Agent, rate-limit). Format ModSecurity SecLang.</p>
+      <p style="color:var(--mut);font-size:13px">Aturan khusus (whitelist IP, blokir User-Agent, rate-limit). Format ModSecurity SecLang.</p>
       <textarea id="custom" rows="12" class="mono"></textarea>
       <button class="save" onclick="saveCustom()">💾 Simpan Custom Rules &amp; Reload</button>
       <div class="msg" id="custom-msg"></div>
@@ -147,7 +161,7 @@ button.save{margin-top:18px;background:var(--acc);color:#04260f;border:none;bord
     <div class="panel">
       <h3>🌐 Proxy Hosts <button class="save" style="margin:0 0 0 auto;padding:7px 14px" onclick="openHostForm()">➕ Tambah Host</button></h3>
       <table><thead><tr><th>Domain</th><th>Upstream</th><th>WAF</th><th>SSL</th><th>WS</th><th>Aksi</th></tr></thead>
-      <tbody id="hosts-tbl"><tr><td colspan="6" style="color:#8b949e">Memuat…</td></tr></tbody></table>
+      <tbody id="hosts-tbl"><tr><td colspan="6" style="color:var(--mut)">Memuat…</td></tr></tbody></table>
     </div>
 
     <!-- Form add/edit host -->
@@ -176,7 +190,7 @@ button.save{margin-top:18px;background:var(--acc);color:#04260f;border:none;bord
       <textarea id="f-custom" rows="5" class="mono" placeholder="# contoh:&#10;proxy_read_timeout 300s;&#10;add_header X-Custom yes;"></textarea>
       <div style="margin-top:14px">
         <button class="save" onclick="saveHost()">💾 Simpan &amp; Reload</button>
-        <button class="save" style="background:#30363d;color:#e6edf3" onclick="closeHostForm()">Batal</button>
+        <button class="save" style="background:var(--lav);color:var(--navy)" onclick="closeHostForm()">Batal</button>
       </div>
       <div class="msg" id="host-msg"></div>
     </div>
@@ -187,7 +201,7 @@ button.save{margin-top:18px;background:var(--acc);color:#04260f;border:none;bord
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
         <div style="border:1px solid var(--line);border-radius:10px;padding:16px">
           <h4 style="font-size:14px;margin-bottom:8px">🌐 Let's Encrypt (otomatis)</h4>
-          <p style="color:#8b949e;font-size:12px">Domain harus sudah mengarah ke IP server ini.</p>
+          <p style="color:var(--mut);font-size:12px">Domain harus sudah mengarah ke IP server ini.</p>
           <label>Email (opsional, utk notifikasi kedaluwarsa)</label>
           <input id="le-email" placeholder="admin@teelee.my.id"/>
           <button class="save" onclick="reqLE()">🔐 Terbitkan Sertifikat</button>
@@ -202,7 +216,7 @@ button.save{margin-top:18px;background:var(--acc);color:#04260f;border:none;bord
         </div>
       </div>
       <div class="msg" id="ssl-msg"></div>
-      <div style="margin-top:12px"><button class="save" style="background:#30363d;color:#e6edf3" onclick="document.getElementById('ssl-panel').style.display='none'">Tutup</button></div>
+      <div style="margin-top:12px"><button class="save" style="background:var(--lav);color:var(--navy)" onclick="document.getElementById('ssl-panel').style.display='none'">Tutup</button></div>
     </div>
   </div>
 
@@ -210,7 +224,7 @@ button.save{margin-top:18px;background:var(--acc);color:#04260f;border:none;bord
   <div class="page" id="p-ai">
     <div class="panel">
       <h3>🤖 Integrasi Platform AI</h3>
-      <p style="color:#8b949e;font-size:13px">Sambungkan LLM untuk Log Intelligence — analisis otomatis log serangan. Pilih provider, isi kredensial, uji koneksi.</p>
+      <p style="color:var(--mut);font-size:13px">Sambungkan LLM untuk Log Intelligence — analisis otomatis log serangan. Pilih provider, isi kredensial, uji koneksi.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <div><label>Provider AI</label><select id="ai-provider" onchange="onProviderChange()"></select></div>
         <div><label>Model</label><input id="ai-model" placeholder="mis. gemini-2.0-flash"/></div>
@@ -226,7 +240,7 @@ button.save{margin-top:18px;background:var(--acc);color:#04260f;border:none;bord
     </div>
     <div class="panel" style="margin-top:16px">
       <h3>🔔 n8n Automation (Alert Rules)</h3>
-      <p style="color:#8b949e;font-size:13px">Webhook n8n untuk memicu alert (mis. ke OpenClaw) saat anomali/serangan.</p>
+      <p style="color:var(--mut);font-size:13px">Webhook n8n untuk memicu alert (mis. ke OpenClaw) saat anomali/serangan.</p>
       <label>n8n Webhook URL</label>
       <input id="n8n-webhook" placeholder="https://n8n.teelee.my.id/webhook/turboshield"/>
       <button class="save" onclick="saveAI()">💾 Simpan</button>
@@ -238,7 +252,7 @@ button.save{margin-top:18px;background:var(--acc);color:#04260f;border:none;bord
   <div class="page" id="p-integ">
     <div class="panel">
       <h3>📡 LibreNMS Monitoring</h3>
-      <p style="color:#8b949e;font-size:13px">Tarik metrik perangkat jaringan dari LibreNMS via API.</p>
+      <p style="color:var(--mut);font-size:13px">Tarik metrik perangkat jaringan dari LibreNMS via API.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <div><label>URL LibreNMS</label><input id="ln-url" placeholder="https://librenms.teelee.my.id"/></div>
         <div><label>X-Auth-Token</label><input id="ln-token" type="password" placeholder="token API (kosongkan = tak berubah)"/></div>
@@ -252,7 +266,7 @@ button.save{margin-top:18px;background:var(--acc);color:#04260f;border:none;bord
 
     <div class="panel" style="margin-top:16px">
       <h3>🤖 Telegram Bot (Notifikasi &amp; Alert)</h3>
-      <p style="color:#8b949e;font-size:13px">Bot untuk kirim alert serangan &amp; password admin. Buat bot via <b>@BotFather</b>, ambil token. Chat ID bisa dari <b>@userinfobot</b>.</p>
+      <p style="color:var(--mut);font-size:13px">Bot untuk kirim alert serangan &amp; password admin. Buat bot via <b>@BotFather</b>, ambil token. Chat ID bisa dari <b>@userinfobot</b>.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <div><label>Bot Token</label><input id="tg-token" type="password" placeholder="123456:ABC-... (kosongkan = tak berubah)"/></div>
         <div><label>Chat ID (tujuan notifikasi)</label><input id="tg-chat" placeholder="mis. 8138695"/></div>
@@ -309,15 +323,15 @@ async function loadOverview(){
       <tr><td>⏱️ Boot</td><td class="mono">${h.boot}</td></tr>`;
     // recent
     const rt=document.getElementById('recent-tbl');
-    if(!j.recent.length){rt.innerHTML='<tr><td colspan="6" style="color:#8b949e">Belum ada serangan tercatat. 🎉</td></tr>';}
+    if(!j.recent.length){rt.innerHTML='<tr><td colspan="6" style="color:var(--mut)">Belum ada serangan tercatat. 🎉</td></tr>';}
     else{rt.innerHTML=j.recent.map(t=>`<tr><td class="mono">${(t.time||'').slice(0,25)}</td><td class="mono">${t.ip}</td><td>${t.method}</td><td class="mono">${t.uri}</td><td>${t.categories.map(badge).join(' ')}</td><td class="mono">${t.status}</td></tr>`).join('');}
     // chart
     const cats=j.threat_by_cat;const labels=Object.keys(cats),data=Object.values(cats);
     if(chartCat)chartCat.destroy();
     chartCat=new Chart(document.getElementById('chart-cat'),{type:'doughnut',
       data:{labels:labels.length?labels:['Belum ada'],datasets:[{data:data.length?data:[1],
-        backgroundColor:['#f85149','#d29922','#bc4fda','#58a6ff','#3fb950','#e3b341','#8b949e']}]},
-      options:{plugins:{legend:{position:'bottom',labels:{color:'#8b949e'}}}}});
+        backgroundColor:['#4058B0','#6f83d6','#1A2138','#8ea1e8','#c77f2e','#57b877','#b9c4e8']}]},
+      options:{plugins:{legend:{position:'bottom',labels:{color:getComputedStyle(document.body).getPropertyValue('--mut')||'#6b7394'}}}}});
   }catch(e){console.error(e);}
 }
 async function loadWaf(){
@@ -351,7 +365,7 @@ async function saveCustom(){
 }
 async function loadThreats(){
   const r=await fetch('/api/threats');const j=await r.json();const t=document.getElementById('threats-tbl');
-  if(!j.threats.length){t.innerHTML='<tr><td colspan="6" style="color:#8b949e">Belum ada serangan tercatat. 🎉</td></tr>';return;}
+  if(!j.threats.length){t.innerHTML='<tr><td colspan="6" style="color:var(--mut)">Belum ada serangan tercatat. 🎉</td></tr>';return;}
   t.innerHTML=j.threats.map(x=>`<tr><td class="mono">${(x.time||'').slice(0,25)}</td><td class="mono">${x.ip}</td><td>${x.method}</td><td class="mono">${x.uri}</td><td>${x.categories.map(badge).join(' ')}</td><td class="mono" style="font-size:11px">${(x.messages||[]).join('; ').slice(0,80)}</td></tr>`).join('');
 }
 async function logout(){await fetch('/api/logout',{method:'POST'});location.href='/';}
@@ -362,7 +376,7 @@ async function loadHosts(){
   const r=await fetch('/api/proxy-hosts');const j=await r.json();
   AI_PROVIDERS=j.ai_providers||{};
   const t=document.getElementById('hosts-tbl');
-  if(!j.hosts.length){t.innerHTML='<tr><td colspan="6" style="color:#8b949e">Belum ada proxy host. Klik "Tambah Host".</td></tr>';return;}
+  if(!j.hosts.length){t.innerHTML='<tr><td colspan="6" style="color:var(--mut)">Belum ada proxy host. Klik "Tambah Host".</td></tr>';return;}
   t.innerHTML=j.hosts.map(h=>{
     const ssl=h.ssl&&h.ssl.enabled;
     const wm=h.waf_mode||'On';
@@ -375,8 +389,8 @@ async function loadHosts(){
       <td>${h.websocket?'✓':'–'}</td>
       <td>
         <button class="save" style="padding:4px 10px;margin:0" onclick='editHost(${JSON.stringify(JSON.stringify(h))})'>✏️</button>
-        <button class="save" style="padding:4px 10px;margin:0;background:#1f6feb;color:#fff" onclick="openSSL('${h.domain}')">🔒 SSL</button>
-        <button class="save" style="padding:4px 10px;margin:0;background:#2d1418;color:#f85149" onclick="delHost('${h.domain}')">🗑️</button>
+        <button class="save" style="padding:4px 10px;margin:0;background:var(--blue);color:#fff" onclick="openSSL('${h.domain}')">🔒 SSL</button>
+        <button class="save" style="padding:4px 10px;margin:0;background:#fde8e8;color:#c0392b" onclick="delHost('${h.domain}')">🗑️</button>
       </td></tr>`;
   }).join('');
 }
@@ -505,10 +519,10 @@ async function saveTG(){const m=document.getElementById('tg-msg');
   }catch(e){m.className='msg err';m.style.display='block';m.textContent='Error: '+e.message;}}
 
 // ============ THEME ============
-function toggleTheme(){const light=document.body.classList.toggle('light');
-  localStorage.setItem('ts_theme',light?'light':'dark');
-  document.getElementById('theme-btn').textContent=light?'☀️':'🌙';}
-(function initTheme(){if(localStorage.getItem('ts_theme')==='light'){document.body.classList.add('light');
+function toggleTheme(){const dark=document.body.classList.toggle('dark');
+  localStorage.setItem('ts_theme',dark?'dark':'light');
+  document.getElementById('theme-btn').textContent=dark?'☀️':'🌙';}
+(function initTheme(){if(localStorage.getItem('ts_theme')==='dark'){document.body.classList.add('dark');
   var tb=document.getElementById('theme-btn');if(tb)tb.textContent='☀️';}})();
 
 // ============ i18n (dictionary phrase-based, full coverage) ============
