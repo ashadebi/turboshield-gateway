@@ -371,13 +371,14 @@ async function loadThreats(){
 async function logout(){await fetch('/api/logout',{method:'POST'});location.href='/';}
 
 // ============ PROXY MANAGER ============
-let AI_PROVIDERS={}; let editingDomain=null;
+let AI_PROVIDERS={}; let editingDomain=null; let HOSTS=[];
 async function loadHosts(){
   const r=await fetch('/api/proxy-hosts');const j=await r.json();
   AI_PROVIDERS=j.ai_providers||{};
+  HOSTS=j.hosts||[];
   const t=document.getElementById('hosts-tbl');
-  if(!j.hosts.length){t.innerHTML='<tr><td colspan="6" style="color:var(--mut)">Belum ada proxy host. Klik "Tambah Host".</td></tr>';return;}
-  t.innerHTML=j.hosts.map(h=>{
+  if(!HOSTS.length){t.innerHTML='<tr><td colspan="6" style="color:var(--mut)">Belum ada proxy host. Klik "Tambah Host".</td></tr>';return;}
+  t.innerHTML=HOSTS.map((h,idx)=>{
     const ssl=h.ssl&&h.ssl.enabled;
     const wm=h.waf_mode||'On';
     const wafBadge=wm==='Off'?'<span class="pill off">🔴 off</span>':wm==='DetectionOnly'?'<span class="pill det">🟡 detect</span>':'<span class="pill">🟢 on</span>';
@@ -388,7 +389,7 @@ async function loadHosts(){
       <td>${ssl?'<span class="pill">🔒 aktif</span>':'<span class="pill off">tidak</span>'}</td>
       <td>${h.websocket?'✓':'–'}</td>
       <td>
-        <button class="save" style="padding:4px 10px;margin:0" onclick='editHost(${JSON.stringify(JSON.stringify(h))})'>✏️</button>
+        <button class="save" style="padding:4px 10px;margin:0" onclick="editHost(${idx})">✏️</button>
         <button class="save" style="padding:4px 10px;margin:0;background:var(--blue);color:#fff" onclick="openSSL('${h.domain}')">🔒 SSL</button>
         <button class="save" style="padding:4px 10px;margin:0;background:#fde8e8;color:#c0392b" onclick="delHost('${h.domain}')">🗑️</button>
       </td></tr>`;
@@ -401,7 +402,7 @@ function openHostForm(){editingDomain=null;document.getElementById('host-form-ti
   document.getElementById('f-ws').checked=true;document.getElementById('f-exploit').checked=true;document.getElementById('f-forcessl').checked=false;
   document.getElementById('host-form').style.display='block';document.getElementById('host-msg').className='msg';}
 function closeHostForm(){document.getElementById('host-form').style.display='none';}
-function editHost(js){const h=JSON.parse(JSON.parse(js));editingDomain=h.domain;
+function editHost(idx){const h=HOSTS[idx];if(!h)return;editingDomain=h.domain;
   document.getElementById('host-form-title').textContent='✏️ Edit: '+h.domain;
   document.getElementById('f-domain').value=h.domain;document.getElementById('f-domain').disabled=true;
   document.getElementById('f-upstream').value=h.upstream;document.getElementById('f-scheme').value=h.scheme||'http';

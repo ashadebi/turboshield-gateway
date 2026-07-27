@@ -290,7 +290,7 @@ def api_hosts_save(email: str = Depends(require_auth),
                    domain: str = Form(...), upstream: str = Form(...),
                    scheme: str = Form("http"), websocket: str = Form("true"),
                    block_exploits: str = Form("true"), force_ssl: str = Form("false"),
-                   ssl_enabled: str = Form("false"), custom_config: str = Form(""),
+                   ssl_enabled: str = Form(""), custom_config: str = Form(""),
                    waf_mode: str = Form("On")):
     domain = domain.strip().lower()
     if not domain or " " in domain:
@@ -308,8 +308,10 @@ def api_hosts_save(email: str = Depends(require_auth),
         "custom_config": custom_config, "waf_mode": waf_mode,
         "updated": datetime.now(timezone.utc).isoformat(),
     })
-    rec.setdefault("ssl", {})
-    rec["ssl"]["enabled"] = ssl_enabled == "true"
+    rec.setdefault("ssl", {"enabled": False, "force": False})
+    # ssl_enabled hanya di-set bila param dikirim eksplisit; else pertahankan (dikelola panel SSL)
+    if ssl_enabled != "":
+        rec["ssl"]["enabled"] = ssl_enabled == "true"
     rec["ssl"]["force"] = force_ssl == "true"
     if not existing: hosts.append(rec)
     # tulis config + test + reload
