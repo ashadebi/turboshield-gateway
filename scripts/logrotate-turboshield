@@ -1,0 +1,27 @@
+# TurboShield — logrotate untuk audit log WAF (ModSecurity)
+# Pasang:
+#   sudo cp scripts/logrotate-turboshield /etc/logrotate.d/turboshield
+#   sudo logrotate -v /etc/logrotate.d/turboshield   # tes
+# SESUAIKAN path bila deploy bukan di /root/turboshield.
+# Catatan: logrotate TIDAK menerima komentar di ujung baris directive,
+# jadi semua penjelasan diletakkan sebagai baris komentar tersendiri.
+
+/root/turboshield/waf/logs/*.log {
+    # rotasi harian, simpan 14 arsip (~2 minggu)
+    daily
+    rotate 14
+    # rotasi lebih awal bila file > 50MB
+    maxsize 50M
+    # jangan error bila file belum ada; jangan rotasi bila kosong
+    missingok
+    notifempty
+    # gzip arsip lama, tunda 1 siklus (aman utk proses yg masih menulis)
+    compress
+    delaycompress
+    # WAJIB: truncate file asli tanpa restart nginx (ModSecurity pakai fd sama)
+    copytruncate
+    # nama arsip pakai tanggal: modsec_audit.log-20260727.gz
+    dateext
+    dateformat -%Y%m%d
+    su root root
+}

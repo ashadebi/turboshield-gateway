@@ -60,6 +60,25 @@ Memantau file & binary Docker (CIS 1.1.x): `/usr/bin/docker`, `/var/lib/docker`,
 - **Image scanning**: pindai image dengan `trivy` / `docker scout` sebelum deploy.
 - **Update rutin**: `apt upgrade` + `docker pull` image terbaru berkala.
 
+## Timezone & Log Rotation
+
+**Timezone:** seluruh stack di-set ke **Asia/Jakarta (WIB)** — host via `timedatectl`,
+container via env `TZ: "Asia/Jakarta"` di `docker-compose.yml`. Ini membuat timestamp
+di audit log & UI konsisten dengan waktu lokal.
+
+**Logrotate:** audit log ModSecurity (`waf/logs/*.log`) dirotasi otomatis:
+- harian, simpan 14 arsip (~2 minggu), atau lebih awal bila > 50MB
+- `copytruncate` → truncate tanpa restart nginx (ModSecurity terus menulis ke fd sama)
+- arsip di-gzip (`delaycompress`), penamaan bertanggal (`modsec_audit.log-YYYYMMDD.gz`)
+
+Pasang keduanya sekaligus:
+```bash
+sudo bash scripts/setup-timezone-logrotate.sh
+```
+Atau manual: `sudo cp scripts/logrotate-turboshield /etc/logrotate.d/turboshield`
+(jalan otomatis via `/etc/cron.daily/logrotate`). Juga: log Docker sendiri dibatasi
+via `log-opts` di daemon.json (max 10MB × 5 file per container).
+
 ## Menjalankan
 
 ```bash
