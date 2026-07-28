@@ -31,7 +31,7 @@
 
 ```bash
 # 1. Clone ke direktori pilihanmu — bebas, tidak harus /opt (bisa /srv, ~/, dll.)
-git clone <repo-url> turboshield && cd turboshield
+git clone https://github.com/ashadebi/turboshield-gateway.git turboshield && cd turboshield
 
 # 2. Install Docker + hardening (Debian/Ubuntu)
 sudo bash scripts/install-docker-hardened.sh
@@ -43,7 +43,8 @@ docker compose up -d
 #    http://<server-ip>:8181  → isi email → password digenerate
 ```
 
-Detail lengkap: [`docs/INSTALL.md`](docs/INSTALL.md).
+📖 **Baru pertama kali? Ikuti panduan lengkap langkah-demi-langkah:** [`docs/INSTALL.md`](docs/INSTALL.md)
+📘 **Sudah jalan, mau tahu cara pakai tiap menu?** [`docs/USAGE.md`](docs/USAGE.md)
 
 ---
 
@@ -89,8 +90,11 @@ turboshield/
 ├── dashboard/                  # FastAPI app (backend + static UI)
 │   ├── app.py                  # API: auth, WAF, proxy, SSL, AI, monitoring
 │   ├── proxy_ai.py             # proxy host generator + SSL + integrasi
+│   ├── ratelimit.py            # rate limiting: rules + nginx zone generator
+│   ├── botprotect.py           # bot protection: allow/challenge/block by UA
 │   └── static/                 # setup.html, login.html, dashboard.html
-├── waf/                        # config WAF (rules, realip, proxy-hosts)
+├── waf/                        # config WAF (rules, realip, proxy-hosts, rate-limit zones)
+├── assets/                     # logo (SVG source + PNG exports)
 ├── scripts/                    # install-docker-hardened.sh (+ tweak)
 └── docs/                       # dokumentasi
 ```
