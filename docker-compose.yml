@@ -52,7 +52,9 @@ services:
       - ./waf/rules/aaa-turboshield-managed.conf:/opt/owasp-crs/rules/REQUEST-902-turboshield-managed.conf:ro
       - ./waf/rules/turboshield-custom.conf:/opt/owasp-crs/rules/zzz-turboshield.conf:ro
       - ./waf/rules/turboshield-bad-agents.data:/etc/modsecurity.d/turboshield-bad-agents.data:ro
+      - ./waf/rules/bot-protection.conf:/opt/owasp-crs/rules/zzz1-bot-protection.conf:ro
       - ./waf/realip.conf:/etc/nginx/conf.d/00-realip.conf:ro
+      - ./waf/ratelimit-zones.conf:/etc/nginx/conf.d/00-ratelimit-zones.conf
       - ./waf/certs/server.crt:/etc/nginx/conf/server.crt:ro
       - ./waf/certs/server.key:/etc/nginx/conf/server.key:ro
       - ./waf/proxy-hosts:/etc/nginx/conf.d/proxy-hosts:ro

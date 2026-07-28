@@ -3,7 +3,7 @@
 Menyediakan: setup wizard (first-run), login/session, system health, threat feed
 (dari ModSecurity audit log), dan kontrol WAF (engine mode, anomaly threshold, custom rules).
 """
-import os, json, secrets, hashlib, time, subprocess, re
+import os, json, secrets, hashlib, time, subprocess, re, uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from collections import deque, Counter
@@ -330,11 +330,135 @@ def api_hosts_save(email: str = Depends(require_auth),
 
 @app.post("/api/proxy-hosts/delete")
 def api_hosts_delete(email: str = Depends(require_auth), domain: str = Form(...)):
-    hosts = [h for h in PX.load_hosts() if h["domain"] != domain.strip().lower()]
+    domain = domain.strip().lower()
+    hosts = [h for h in PX.load_hosts() if h["domain"] != domain]
     PX.save_hosts(hosts)
     PX.remove_host_conf(domain)
+    # bersihkan rate-limit rules yg nempel di host yg dihapus + regenerate zona
+    rl_rules = [r for r in RL.load_rules() if r.get("host") != domain]
+    RL.save_rules(rl_rules)
+    RL.regenerate_zones_file()
     ok, msg = PX.waf_reload()
     return {"status": "ok", "reload_msg": msg}
+
+# ================= ROUTES: RATE LIMITING =================
+import ratelimit as RL
+
+@app.get("/api/rate-limits")
+def api_rl_list(email: str = Depends(require_auth)):
+    return {"rules": RL.load_rules(), "scopes": list(RL.SCOPES),
+            "hosts": [h["domain"] for h in PX.load_hosts()]}
+
+@app.post("/api/rate-limits")
+def api_rl_save(email: str = Depends(require_auth),
+                 rule_id: str = Form(""), host: str = Form(...),
+                 path_prefix: str = Form("/"), scope: str = Form("ip"),
+                 key_name: str = Form(""), key_source: str = Form("header"),
+                 rate: int = Form(...), unit: str = Form("s"),
+                 burst: int = Form(0), nodelay: str = Form("true"),
+                 enabled: str = Form("true")):
+    rules = RL.load_rules()
+    rid = rule_id.strip() or str(uuid.uuid4())[:8]
+    rec = {
+        "id": rid, "host": host.strip().lower(), "path_prefix": path_prefix.strip() or "/",
+        "scope": scope, "key_name": key_name.strip(), "key_source": key_source,
+        "rate": rate, "unit": unit if unit in ("s", "m") else "s",
+        "burst": burst if burst > 0 else max(1, rate * 2),
+        "nodelay": nodelay == "true", "enabled": enabled == "true",
+        "updated": datetime.now(timezone.utc).isoformat(),
+    }
+    ok, msg = RL.validate_rule(rec)
+    if not ok:
+        raise HTTPException(400, msg)
+    rules = [r for r in rules if r["id"] != rid]
+    rules.append(rec)
+    RL.save_rules(rules)
+    # regenerate zona + config host yg terdampak, lalu reload
+    host_obj = next((h for h in PX.load_hosts() if h["domain"] == rec["host"]), None)
+    if not host_obj:
+        raise HTTPException(400, f"Host '{rec['host']}' tidak ditemukan di Proxy Manager.")
+    PX.write_host_conf(host_obj)
+    tok, tmsg = PX.waf_test_config()
+    if not tok:
+        rules = [r for r in rules if r["id"] != rid]
+        RL.save_rules(rules); RL.regenerate_zones_file(); PX.write_host_conf(host_obj)
+        raise HTTPException(400, f"Config nginx invalid, rule dibatalkan:\n{tmsg}")
+    ok2, msg2 = PX.waf_reload()
+    return {"status": "ok", "rule": rec, "reload_msg": msg2}
+
+@app.post("/api/rate-limits/delete")
+def api_rl_delete(email: str = Depends(require_auth), rule_id: str = Form(...)):
+    rules = RL.load_rules()
+    target = next((r for r in rules if r["id"] == rule_id), None)
+    rules = [r for r in rules if r["id"] != rule_id]
+    RL.save_rules(rules)
+    RL.regenerate_zones_file()
+    if target:
+        host_obj = next((h for h in PX.load_hosts() if h["domain"] == target["host"]), None)
+        if host_obj:
+            PX.write_host_conf(host_obj)
+    ok, msg = PX.waf_reload()
+    return {"status": "ok", "reload_msg": msg}
+
+# ================= ROUTES: BOT PROTECTION =================
+import botprotect as BP
+
+@app.get("/api/bot-protection")
+def api_bot_get(email: str = Depends(require_auth)):
+    return BP.load_config()
+
+@app.post("/api/bot-protection/toggle")
+def api_bot_toggle(email: str = Depends(require_auth),
+                    section: str = Form(...), key: str = Form(...), enabled: str = Form(...)):
+    if section not in ("allow", "challenge", "block"):
+        raise HTTPException(400, "Section tidak dikenal.")
+    cfg = BP.load_config()
+    if key not in cfg[section]:
+        raise HTTPException(404, f"Kategori '{key}' tidak ditemukan di {section}.")
+    cfg[section][key]["enabled"] = enabled == "true"
+    BP.save_config(cfg)
+    BP.regenerate_rule_file()
+    tok, tmsg = PX.waf_test_config()
+    if not tok:
+        raise HTTPException(400, f"Config nginx/ModSecurity invalid:\n{tmsg}")
+    ok, msg = PX.waf_reload()
+    return {"status": "ok", "reload_msg": msg, "config": cfg}
+
+@app.post("/api/bot-protection/mode")
+def api_bot_mode(email: str = Depends(require_auth), challenge_mode: str = Form(...)):
+    if challenge_mode not in ("log", "block"):
+        raise HTTPException(400, "Mode harus 'log' atau 'block'.")
+    cfg = BP.load_config()
+    cfg["challenge_mode"] = challenge_mode
+    BP.save_config(cfg)
+    BP.regenerate_rule_file()
+    tok, tmsg = PX.waf_test_config()
+    if not tok:
+        raise HTTPException(400, f"Config nginx/ModSecurity invalid:\n{tmsg}")
+    ok, msg = PX.waf_reload()
+    return {"status": "ok", "reload_msg": msg}
+
+@app.post("/api/bot-protection/custom")
+def api_bot_add_custom(email: str = Depends(require_auth),
+                        section: str = Form(...), key: str = Form(...),
+                        label: str = Form(...), ua_list: str = Form(...)):
+    if section not in ("allow", "challenge", "block"):
+        raise HTTPException(400, "Section tidak dikenal.")
+    key = re.sub(r"[^a-z0-9_]", "_", key.strip().lower())
+    ua = [t.strip() for t in ua_list.split(",") if t.strip()]
+    if not key or not ua:
+        raise HTTPException(400, "Key dan minimal 1 User-Agent pattern wajib diisi.")
+    cfg = BP.load_config()
+    cfg[section][key] = {"label": label.strip() or key, "ua": ua, "enabled": True}
+    BP.save_config(cfg)
+    BP.regenerate_rule_file()
+    tok, tmsg = PX.waf_test_config()
+    if not tok:
+        del cfg[section][key]
+        BP.save_config(cfg); BP.regenerate_rule_file()
+        raise HTTPException(400, f"Config invalid, kategori dibatalkan:\n{tmsg}")
+    ok, msg = PX.waf_reload()
+    return {"status": "ok", "reload_msg": msg, "config": cfg}
 
 @app.post("/api/proxy-hosts/ssl-letsencrypt")
 def api_ssl_le(email: str = Depends(require_auth), domain: str = Form(...), le_email: str = Form("")):

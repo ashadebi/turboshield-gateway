@@ -9,6 +9,7 @@ Fungsi:
 import os, json, re, subprocess, ssl, socket, urllib.request
 from pathlib import Path
 from datetime import datetime, timezone
+import ratelimit as RL
 
 DATA_DIR    = Path(os.environ.get("TS_DATA_DIR", "/app/data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -125,6 +126,7 @@ def render_host_conf(h):
     if force_ssl:
         conf += "    location / { return 301 https://$host$request_uri; }\n"
     else:
+        conf += RL.render_locations_for_host(dom, ws_lines, up_host)
         conf += common_loc
     if custom.strip():
         conf += "    # --- custom config ---\n"
@@ -145,6 +147,7 @@ def render_host_conf(h):
         conf += "    ssl_prefer_server_ciphers off;\n"
         conf += acme_loc
         conf += exploit_lines
+        conf += RL.render_locations_for_host(dom, ws_lines, up_host)
         conf += common_loc
         if custom.strip():
             conf += "\n".join("    " + l for l in custom.splitlines()) + "\n"
@@ -153,6 +156,7 @@ def render_host_conf(h):
 
 def write_host_conf(h):
     slug = _slug(h["domain"])
+    RL.regenerate_zones_file()
     (PROXY_DIR / f"{slug}.conf").write_text(render_host_conf(h))
     try: os.chmod(PROXY_DIR / f"{slug}.conf", 0o644)
     except Exception: pass

@@ -85,6 +85,8 @@ button.save:hover{background:#34489a}
     <div class="sec">Keamanan</div>
     <a data-p="waf">🛡️ WAF &amp; Security</a>
     <a data-p="threats">🚨 Threat Log</a>
+    <a data-p="ratelimit">⏱️ Rate Limiting</a>
+    <a data-p="botprotect">🤖 Bot Protection</a>
     <div class="sec">Jaringan</div>
     <a data-p="proxy">🌐 Proxy &amp; Routing</a>
     <div class="sec">Kecerdasan</div>
@@ -155,6 +157,88 @@ button.save:hover{background:#34489a}
     <div class="panel"><h3>🚨 Threat Log Lengkap</h3>
       <table><thead><tr><th>Waktu</th><th>IP</th><th>Method</th><th>URI</th><th>Kategori</th><th>Pesan Rule</th></tr></thead>
       <tbody id="threats-tbl"></tbody></table>
+    </div>
+  </div>
+
+  <!-- RATE LIMITING -->
+  <div class="page" id="p-ratelimit">
+    <div class="panel">
+      <h3>⏱️ Rate Limiting per Host <button class="save" style="margin:0 0 0 auto;padding:7px 14px" onclick="openRlForm()">➕ Tambah Rule</button></h3>
+      <p style="color:var(--mut);font-size:13px">Batasi laju request per scope (IP/header/cookie/API-key) untuk path tertentu di suatu host. Contoh: <code>/login</code> 5 req/menit per-IP, <code>/api</code> 100 req/detik per API-key.</p>
+      <table><thead><tr><th>Host</th><th>Path</th><th>Scope</th><th>Limit</th><th>Burst</th><th>Status</th><th>Aksi</th></tr></thead>
+      <tbody id="rl-tbl"><tr><td colspan="7" style="color:var(--mut)">Memuat…</td></tr></tbody></table>
+    </div>
+    <div class="panel" id="rl-form" style="display:none;margin-top:16px">
+      <h3 id="rl-form-title">➕ Tambah Rate-Limit Rule</h3>
+      <label>Proxy Host</label>
+      <select id="rl-host"></select>
+      <label>Path Prefix (contoh: /login, /api, / untuk semua)</label>
+      <input id="rl-path" value="/"/>
+      <label>Scope (siapa yang dihitung)</label>
+      <select id="rl-scope" onchange="rlScopeChanged()">
+        <option value="ip">Per-IP</option>
+        <option value="header">Per-Header</option>
+        <option value="cookie">Per-Cookie</option>
+        <option value="apikey">Per-API-Key</option>
+      </select>
+      <div id="rl-keyname-wrap" style="display:none">
+        <label id="rl-keyname-lbl">Nama Header/Cookie</label>
+        <input id="rl-keyname" placeholder="contoh: X-API-Key atau session_id"/>
+        <div id="rl-keysrc-wrap" style="display:none">
+          <label>Sumber API Key</label>
+          <select id="rl-keysrc"><option value="header">Header</option><option value="query">Query param</option></select>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px">
+        <div style="flex:1"><label>Rate</label><input id="rl-rate" type="number" min="1" value="5"/></div>
+        <div style="flex:1"><label>Per</label><select id="rl-unit"><option value="m">menit</option><option value="s">detik</option></select></div>
+        <div style="flex:1"><label>Burst (opsional)</label><input id="rl-burst" type="number" min="0" value="0" placeholder="auto=2x rate"/></div>
+      </div>
+      <label style="margin-top:10px"><input type="checkbox" id="rl-nodelay" checked style="width:auto;display:inline"> Nodelay (tolak langsung saat burst habis, bukan antre)</label>
+      <button class="save" onclick="saveRl()">💾 Simpan &amp; Reload WAF</button>
+      <button class="save" style="background:var(--lav);color:var(--navy)" onclick="closeRlForm()">Batal</button>
+      <div class="msg" id="rl-msg"></div>
+      <p style="color:var(--mut);font-size:12px;margin-top:10px">💡 Contoh cepat: <b>Login</b> → path <code>/login</code>, scope Per-IP, 5/menit. <b>API</b> → path <code>/api</code>, scope Per-API-Key, 100/detik. <b>Homepage</b> → jangan buat rule (unlimited by default).</p>
+    </div>
+  </div>
+
+  <!-- BOT PROTECTION -->
+  <div class="page" id="p-botprotect">
+    <div class="panel">
+      <h3>🤖 Mode Challenge <span class="pill" id="bot-mode-pill">–</span></h3>
+      <p style="color:var(--mut);font-size:13px">Bot non-jahat (curl, python-requests, scraper generik) tanpa infra CAPTCHA — pilih perlakuannya:</p>
+      <div class="toggle-row" id="bot-mode-toggle">
+        <div class="opt" data-m="log">📝 Log Only<br><small>Tercatat di Threat Log, tetap diteruskan (fail-open)</small></div>
+        <div class="opt" data-m="block">🚫 Block<br><small>Ditolak 403 (lebih ketat, bisa false-positive)</small></div>
+      </div>
+    </div>
+    <div class="grid2" style="margin-top:16px">
+      <div class="panel">
+        <h3>✅ Allow-list (bot resmi, tak diganggu)</h3>
+        <p style="color:var(--mut);font-size:12px">Verifikasi via User-Agent string saja (bisa dipalsukan) — cukup untuk niat "jangan ganggu SEO crawler".</p>
+        <div id="bot-allow-list"></div>
+      </div>
+      <div class="panel">
+        <h3>🚫 Block-list (scanner/exploit tool)</h3>
+        <div id="bot-block-list"></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>⚠️ Challenge-list (bot/tool netral)</h3>
+      <div id="bot-challenge-list"></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>➕ Tambah Kategori Custom</h3>
+      <label>Kategori</label>
+      <select id="bot-c-section"><option value="allow">Allow</option><option value="challenge">Challenge</option><option value="block">Block</option></select>
+      <label>Key (identifier, huruf/angka/underscore)</label>
+      <input id="bot-c-key" placeholder="contoh: yandex"/>
+      <label>Label</label>
+      <input id="bot-c-label" placeholder="contoh: YandexBot"/>
+      <label>User-Agent pattern (pisahkan koma jika lebih dari satu)</label>
+      <input id="bot-c-ua" placeholder="contoh: YandexBot, Yandex"/>
+      <button class="save" onclick="addBotCustom()">➕ Tambah &amp; Reload WAF</button>
+      <div class="msg" id="bot-c-msg"></div>
     </div>
   </div>
 
@@ -291,12 +375,12 @@ button.save:hover{background:#34489a}
 <script>
 let chartCat=null;
 const nav=document.getElementById('nav');
-const titles={dash:'Dashboard',waf:'WAF & Security',threats:'Threat Log',proxy:'Proxy & Routing',ai:'AI & Automation',integ:'Integrasi & Monitoring'};
+const titles={dash:'Dashboard',waf:'WAF & Security',threats:'Threat Log',ratelimit:'Rate Limiting',botprotect:'Bot Protection',proxy:'Proxy & Routing',ai:'AI & Automation',integ:'Integrasi & Monitoring'};
 nav.addEventListener('click',e=>{const a=e.target.closest('a');if(!a)return;
   document.querySelectorAll('.nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');
   const p=a.dataset.p;document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   document.getElementById('p-'+p).classList.add('active');document.getElementById('ptitle').textContent=titles[p];
-  if(p==='waf')loadWaf();if(p==='threats')loadThreats();if(p==='proxy')loadHosts();if(p==='ai')loadAI();if(p==='integ')loadIntegrations();
+  if(p==='waf')loadWaf();if(p==='threats')loadThreats();if(p==='proxy')loadHosts();if(p==='ai')loadAI();if(p==='integ')loadIntegrations();if(p==='ratelimit')loadRateLimits();if(p==='botprotect')loadBotProtect();
 });
 function badge(c){const m={sqli:'SQL Injection',xss:'XSS',rce:'RCE',lfi:'LFI/Traversal',anomaly:'Anomaly'};
   const cls=['sqli','xss','rce','lfi','anomaly'].includes(c)?c:'def';return `<span class="badge ${cls}">${m[c]||c}</span>`;}
@@ -497,6 +581,129 @@ async function loadIntegrations(){
   const tg=c.telegram||{};document.getElementById('tg-chat').value=tg.chat_id||'';
   document.getElementById('tg-token').placeholder=tg.token?('tersimpan: '+tg.token):'token bot (kosongkan = tak berubah)';
   document.getElementById('tg-notify').checked=tg.notify_setup!==false;
+}
+
+// ============ RATE LIMITING ============
+let RL_RULES=[]; let RL_HOSTS=[]; let editingRlId=null;
+const SCOPE_LABEL={ip:'Per-IP',header:'Per-Header',cookie:'Per-Cookie',apikey:'Per-API-Key'};
+async function loadRateLimits(){
+  const r=await fetch('/api/rate-limits');const j=await r.json();
+  RL_RULES=j.rules||[];RL_HOSTS=j.hosts||[];
+  const sel=document.getElementById('rl-host');
+  sel.innerHTML=RL_HOSTS.length?RL_HOSTS.map(h=>`<option value="${h}">${h}</option>`).join(''):'<option value="">(belum ada proxy host)</option>';
+  const t=document.getElementById('rl-tbl');
+  if(!RL_RULES.length){t.innerHTML='<tr><td colspan="7" style="color:var(--mut)">Belum ada rate-limit rule.</td></tr>';return;}
+  t.innerHTML=RL_RULES.map((r,idx)=>{
+    const keyInfo=r.scope!=='ip'?` (${r.key_name})`:'';
+    return `<tr>
+      <td class="mono">${r.host}</td>
+      <td class="mono">${r.path_prefix}</td>
+      <td>${SCOPE_LABEL[r.scope]||r.scope}${keyInfo}</td>
+      <td class="mono">${r.rate}/${r.unit==='m'?'menit':'detik'}</td>
+      <td>${r.burst}</td>
+      <td>${r.enabled?'<span class="pill">aktif</span>':'<span class="pill off">nonaktif</span>'}</td>
+      <td>
+        <button class="save" style="padding:4px 10px;margin:0" onclick="editRl(${idx})">✏️</button>
+        <button class="save" style="padding:4px 10px;margin:0;background:#fde8e8;color:#c0392b" onclick="delRl('${r.id}')">🗑️</button>
+      </td></tr>`;
+  }).join('');
+}
+function rlScopeChanged(){
+  const s=document.getElementById('rl-scope').value;
+  const wrap=document.getElementById('rl-keyname-wrap');
+  const lbl=document.getElementById('rl-keyname-lbl');
+  const srcWrap=document.getElementById('rl-keysrc-wrap');
+  wrap.style.display=s==='ip'?'none':'block';
+  srcWrap.style.display=s==='apikey'?'block':'none';
+  lbl.textContent=s==='header'?'Nama Header (contoh: X-Client-Id)':s==='cookie'?'Nama Cookie (contoh: session_id)':s==='apikey'?'Nama Header/Param API-Key (contoh: X-API-Key)':'Nama';
+}
+function openRlForm(){editingRlId=null;document.getElementById('rl-form-title').textContent='➕ Tambah Rate-Limit Rule';
+  document.getElementById('rl-path').value='/';document.getElementById('rl-scope').value='ip';
+  document.getElementById('rl-keyname').value='';document.getElementById('rl-keysrc').value='header';
+  document.getElementById('rl-rate').value=5;document.getElementById('rl-unit').value='m';document.getElementById('rl-burst').value=0;
+  document.getElementById('rl-nodelay').checked=true;rlScopeChanged();
+  document.getElementById('rl-form').style.display='block';document.getElementById('rl-msg').className='msg';}
+function closeRlForm(){document.getElementById('rl-form').style.display='none';}
+function editRl(idx){const r=RL_RULES[idx];if(!r)return;editingRlId=r.id;
+  document.getElementById('rl-form-title').textContent='✏️ Edit Rule: '+r.host+r.path_prefix;
+  document.getElementById('rl-host').value=r.host;document.getElementById('rl-path').value=r.path_prefix;
+  document.getElementById('rl-scope').value=r.scope;document.getElementById('rl-keyname').value=r.key_name||'';
+  document.getElementById('rl-keysrc').value=r.key_source||'header';
+  document.getElementById('rl-rate').value=r.rate;document.getElementById('rl-unit').value=r.unit;
+  document.getElementById('rl-burst').value=r.burst;document.getElementById('rl-nodelay').checked=!!r.nodelay;
+  rlScopeChanged();
+  document.getElementById('rl-form').style.display='block';document.getElementById('rl-msg').className='msg';}
+async function saveRl(){
+  const b=new URLSearchParams({rule_id:editingRlId||'',host:document.getElementById('rl-host').value,
+    path_prefix:document.getElementById('rl-path').value,scope:document.getElementById('rl-scope').value,
+    key_name:document.getElementById('rl-keyname').value,key_source:document.getElementById('rl-keysrc').value,
+    rate:document.getElementById('rl-rate').value,unit:document.getElementById('rl-unit').value,
+    burst:document.getElementById('rl-burst').value||0,
+    nodelay:document.getElementById('rl-nodelay').checked,enabled:true});
+  const m=document.getElementById('rl-msg');
+  try{const r=await fetch('/api/rate-limits',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    const j=await r.json();
+    if(!r.ok){m.className='msg err';m.style.display='block';m.textContent='⚠️ '+(j.detail||'Gagal');return;}
+    m.className='msg ok';m.style.display='block';m.textContent='✅ Rule tersimpan & WAF di-reload.';loadRateLimits();setTimeout(closeRlForm,900);
+  }catch(e){m.className='msg err';m.style.display='block';m.textContent='Error: '+e.message;}
+}
+async function delRl(id){if(!confirm('Hapus rate-limit rule ini?'))return;
+  const b=new URLSearchParams({rule_id:id});
+  await fetch('/api/rate-limits/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+  loadRateLimits();
+}
+
+// ============ BOT PROTECTION ============
+async function loadBotProtect(){
+  const r=await fetch('/api/bot-protection');const cfg=await r.json();
+  document.querySelectorAll('#bot-mode-toggle .opt').forEach(o=>o.classList.toggle('on',o.dataset.m===cfg.challenge_mode));
+  const pill=document.getElementById('bot-mode-pill');
+  pill.textContent=cfg.challenge_mode==='block'?'🚫 Block':'📝 Log Only';
+  pill.className='pill'+(cfg.challenge_mode==='block'?' off':'');
+  renderBotSection('allow',cfg.allow);
+  renderBotSection('challenge',cfg.challenge);
+  renderBotSection('block',cfg.block);
+}
+function renderBotSection(section,items){
+  const el=document.getElementById('bot-'+section+'-list');
+  const keys=Object.keys(items);
+  if(!keys.length){el.innerHTML='<p style="color:var(--mut);font-size:13px">Belum ada kategori.</p>';return;}
+  el.innerHTML=keys.map(k=>{
+    const it=items[k];
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--lav)">
+      <div><b>${it.label}</b><br><span class="mono" style="font-size:11px;color:var(--mut)">${it.ua.join(', ')}</span></div>
+      <label style="margin:0;display:flex;align-items:center;gap:6px;width:auto">
+        <input type="checkbox" style="width:auto" ${it.enabled?'checked':''} onchange="toggleBot('${section}','${k}',this.checked)"> aktif
+      </label>
+    </div>`;
+  }).join('');
+}
+async function toggleBot(section,key,enabled){
+  const b=new URLSearchParams({section,key,enabled});
+  try{
+    const r=await fetch('/api/bot-protection/toggle',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    if(!r.ok){const j=await r.json();alert('Gagal: '+(j.detail||'error'));}
+    loadBotProtect();
+  }catch(e){alert('Error: '+e.message);}
+}
+document.getElementById('bot-mode-toggle')?.addEventListener('click', async e=>{
+  const opt=e.target.closest('.opt');if(!opt)return;
+  const b=new URLSearchParams({challenge_mode:opt.dataset.m});
+  await fetch('/api/bot-protection/mode',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+  loadBotProtect();
+});
+async function addBotCustom(){
+  const b=new URLSearchParams({section:document.getElementById('bot-c-section').value,
+    key:document.getElementById('bot-c-key').value,label:document.getElementById('bot-c-label').value,
+    ua_list:document.getElementById('bot-c-ua').value});
+  const m=document.getElementById('bot-c-msg');
+  try{const r=await fetch('/api/bot-protection/custom',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    const j=await r.json();
+    if(!r.ok){m.className='msg err';m.style.display='block';m.textContent='⚠️ '+(j.detail||'Gagal');return;}
+    m.className='msg ok';m.style.display='block';m.textContent='✅ Kategori ditambahkan & WAF di-reload.';
+    document.getElementById('bot-c-key').value='';document.getElementById('bot-c-label').value='';document.getElementById('bot-c-ua').value='';
+    loadBotProtect();
+  }catch(e){m.className='msg err';m.style.display='block';m.textContent='Error: '+e.message;}
 }
 async function testLN(){const m=document.getElementById('ln-msg');m.className='msg';m.style.display='block';m.textContent='⏳ Menguji…';
   const b=new URLSearchParams({url:document.getElementById('ln-url').value,token:document.getElementById('ln-token').value});

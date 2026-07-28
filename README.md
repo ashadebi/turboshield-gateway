@@ -15,6 +15,8 @@
 | **WAF Engine** | nginx + ModSecurity v3 + OWASP CRS (SQLi, XSS, RCE, LFI, path traversal, scanner). Coraza-compatible (SecLang/CRS sama). |
 | **Dashboard** | Panel web port **8181**: setup wizard, login (session), health real-time, live threat feed, grafik. |
 | **WAF Control** | Toggle engine mode **On / Detection Only / Off**, anomaly threshold, editor custom rules — reload live. |
+| **Rate Limiting** | Per-IP/Header/Cookie/API-Key, per-path per-host, native nginx `limit_req` — real, bukan simulasi. |
+| **Bot Protection** | Allow-list (Google/Bing/Apple/FB/Telegram/Slack/Discord), Block-list (sqlmap/nikto/nmap/dst), Challenge-list (curl/python-requests/scraper) dgn mode Log/Block. |
 | **Proxy Manager** | CRUD proxy host (domain, upstream, scheme, WebSocket, block-exploits), **toggle WAF per-host**, custom nginx config. |
 | **SSL Manager** | Let's Encrypt otomatis (certbot) **atau** upload sertifikat sendiri, per-host. |
 | **AI Integration** | Gemini / OpenAI / Claude / OpenRouter / Ollama / Custom + n8n webhook. Test koneksi. |
