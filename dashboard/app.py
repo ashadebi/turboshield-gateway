@@ -180,6 +180,10 @@ def root(request: Request):
         return HTMLResponse(Path("/app/static/dashboard.html").read_text())
     return HTMLResponse(Path("/app/static/login.html").read_text())
 
+# logo & aset statis (favicon, app-icon) — publik, cuma file gambar
+if Path("/app/static/assets").exists():
+    app.mount("/assets", StaticFiles(directory="/app/static/assets"), name="assets")
+
 @app.post("/api/setup")
 def api_setup(email: str = Form(...), confirm: str = Form(default="")):
     if load_admin() is not None:

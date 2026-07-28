@@ -1,4 +1,6 @@
-# 🛡️ TurboShield Gateway
+# 🛡️🐉 TurboShield Gateway
+
+<img src="assets/logo-256.png" alt="TurboShield Gateway logo — shield with a friendly dragon face sticking its tongue out" width="120" align="right">
 
 **WAF Reverse Proxy + Management Dashboard** — nginx + ModSecurity v3 + OWASP Core Rule Set, dengan panel administrasi berbasis web (FastAPI), manajemen proxy host ala Nginx Proxy Manager, SSL otomatis (Let's Encrypt) / upload sendiri, integrasi AI & monitoring, serta hardening Docker lengkap.
 

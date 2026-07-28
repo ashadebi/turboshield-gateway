@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- TurboShield Gateway — logo: Shield Dragon Face (melet), palet #1A2138/#4058B0/#EDF0F8 -->
+  <!-- shield outer -->
+  <path d="M100 20 L165 45 L165 100 Q165 155 100 185 Q35 155 35 100 L35 45 Z" fill="#4058B0" stroke="#1A2138" stroke-width="5"/>
+  <!-- shield inner -->
+  <path d="M100 32 L153 52 L153 100 Q153 145 100 170 Q47 145 47 100 L47 52 Z" fill="#EDF0F8"/>
+  <!-- horns -->
+  <path d="M70 55 L62 30 L80 48 Z" fill="#4058B0"/>
+  <path d="M130 55 L138 30 L120 48 Z" fill="#4058B0"/>
+  <!-- dragon eyes -->
+  <ellipse cx="78" cy="90" rx="9" ry="11" fill="#1A2138"/>
+  <ellipse cx="122" cy="90" rx="9" ry="11" fill="#1A2138"/>
+  <circle cx="81" cy="86" r="3" fill="#fff"/>
+  <circle cx="125" cy="86" r="3" fill="#fff"/>
+  <!-- cheek blush -->
+  <ellipse cx="65" cy="105" rx="7" ry="4" fill="#f2a3b0" opacity="0.7"/>
+  <ellipse cx="135" cy="105" rx="7" ry="4" fill="#f2a3b0" opacity="0.7"/>
+  <!-- smile -->
+  <path d="M75 115 Q100 132 125 115" fill="none" stroke="#1A2138" stroke-width="4" stroke-linecap="round"/>
+  <!-- tongue melet -->
+  <path d="M97 122 Q100 150 108 148 Q112 132 103 122 Z" fill="#e0526b" stroke="#1A2138" stroke-width="2.5"/>
+</svg>
