@@ -75,7 +75,12 @@ Pasang keduanya sekaligus:
 ```bash
 sudo bash scripts/setup-timezone-logrotate.sh
 ```
-Atau manual: `sudo cp scripts/logrotate-turboshield /etc/logrotate.d/turboshield`
+Script ini **auto-detect direktori instalasi** dari lokasinya sendiri (tidak perlu
+env var, bisa dijalankan dari clone di mana saja). Atau manual: generate config
+dari template dengan mengganti placeholder `__TS_DIR__`:
+```bash
+sudo sed "s#__TS_DIR__#$(pwd)#g" scripts/logrotate-turboshield > /etc/logrotate.d/turboshield
+```
 (jalan otomatis via `/etc/cron.daily/logrotate`). Juga: log Docker sendiri dibatasi
 via `log-opts` di daemon.json (max 10MB × 5 file per container).
 

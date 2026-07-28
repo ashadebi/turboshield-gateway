@@ -6,11 +6,16 @@ Panduan lengkap instalasi dari nol di server Debian/Ubuntu.
 - Server Debian 12 / Ubuntu 22.04+ (x86_64), akses root.
 - Domain mengarah ke IP publik server (untuk SSL Let's Encrypt).
 - Port **80**, **443** (WAF) dan **8181** (dashboard) terbuka.
+- **Direktori instalasi bebas** — clone/taruh TurboShield di mana saja
+  (`/opt/turboshield`, `/srv/apps/turboshield`, `/home/user/turboshield`, dst).
+  Semua path host di-resolve otomatis relatif ke tempat kamu `git clone` +
+  `docker compose up`, tidak ada yang hardcoded ke `/root` atau `/opt`.
 
 ## 1. Install Docker + Hardening
 
 ```bash
-git clone <repo-url> /opt/turboshield
+# Clone ke direktori pilihanmu — contoh di bawah pakai /opt, tapi bisa di mana saja
+git clone <repo-url> /opt/turboshield   # atau: /srv/turboshield, ~/turboshield, dll.
 cd /opt/turboshield
 sudo bash scripts/install-docker-hardened.sh
 ```
@@ -25,10 +30,16 @@ Script ini memasang Docker Engine resmi dan menerapkan hardening + tweak real-IP
 ## 2. Deploy Stack
 
 ```bash
-cd /opt/turboshield
+cd /opt/turboshield        # direktori tempat kamu clone tadi
 docker compose up -d
-docker compose ps        # pastikan ts-waf, ts-dashboard, ts-testapp Up
+docker compose ps          # pastikan ts-waf, ts-dashboard, ts-testapp Up
 ```
+
+Tidak perlu set env path manual — dashboard **auto-detect** direktori host-nya
+sendiri lewat `docker inspect` (dipakai untuk memasang container `certbot`
+sementara saat menerbitkan SSL Let's Encrypt). Override hanya diperlukan pada
+setup tak lazim (mis. dashboard jalan tanpa akses `docker.sock`): set
+`TS_HOST_ACME` & `TS_HOST_LE` di `docker-compose.yml` menunjuk ke path host absolut.
 
 Container:
 - **ts-waf** — nginx + ModSecurity, publish `80:8080` & `443:8443`

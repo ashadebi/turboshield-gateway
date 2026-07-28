@@ -10,18 +10,21 @@ ok(){ echo -e "${GREEN}  ✓${NC} $*"; }
 [ "$(id -u)" -eq 0 ] || { echo "Harus root (sudo)."; exit 1; }
 
 TZ_WANT="Asia/Jakarta"
-TS_DIR="${TS_DIR:-/root/turboshield}"
+# Auto-detect direktori instalasi dari lokasi script ini (scripts/..) → bebas dir,
+# tidak harus /root. Override manual: TS_DIR=/path/ke/turboshield sudo -E bash ...
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+TS_DIR="${TS_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+echo "Install dir terdeteksi: ${TS_DIR}"
 
 # 1. Timezone host
 log "Set timezone host → ${TZ_WANT}"
 timedatectl set-timezone "$TZ_WANT" 2>/dev/null || ln -sf "/usr/share/zoneinfo/${TZ_WANT}" /etc/localtime
 ok "Host TZ: $(date +'%Z %z')"
 
-# 2. Logrotate untuk audit log
+# 2. Logrotate untuk audit log (generate config dgn path aktual, bukan hardcoded)
 log "Pasang logrotate config"
-cp "${TS_DIR}/scripts/logrotate-turboshield" /etc/logrotate.d/turboshield
-sed -i "s#/root/turboshield#${TS_DIR}#g" /etc/logrotate.d/turboshield
-ok "Config: /etc/logrotate.d/turboshield"
+sed "s#__TS_DIR__#${TS_DIR}#g" "${TS_DIR}/scripts/logrotate-turboshield" > /etc/logrotate.d/turboshield
+ok "Config: /etc/logrotate.d/turboshield (log: ${TS_DIR}/waf/logs)"
 log "Uji (dry-run):"
 logrotate --debug /etc/logrotate.d/turboshield 2>&1 | grep -E "considering|rotating|log needs" | head || true
 

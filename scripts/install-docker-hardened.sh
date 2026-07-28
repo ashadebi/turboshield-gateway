@@ -143,7 +143,7 @@ main(){
   echo
   ok "SELESAI. Docker terpasang & di-harden."
   echo -e "${YELLOW}Langkah lanjut:${NC}"
-  echo "  • Deploy stack TurboShield: cd /opt/turboshield && docker compose up -d"
+  echo "  • Deploy stack TurboShield: cd <dir-instalasi-kamu> && docker compose up -d"
   echo "  • Pastikan real-IP: lihat docs/REAL-IP.md"
   echo "  • Jika dashboard perlu docker.sock & userns bentrok, jalankan ulang dengan:"
   echo "      TS_DISABLE_USERNS=1 sudo bash $0"

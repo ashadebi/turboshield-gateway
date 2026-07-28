@@ -26,14 +26,16 @@
 ## 🚀 Instalasi Cepat
 
 ```bash
-# 1. Install Docker + hardening (Debian/Ubuntu)
+# 1. Clone ke direktori pilihanmu — bebas, tidak harus /opt (bisa /srv, ~/, dll.)
+git clone <repo-url> turboshield && cd turboshield
+
+# 2. Install Docker + hardening (Debian/Ubuntu)
 sudo bash scripts/install-docker-hardened.sh
 
-# 2. Deploy stack
-cd /opt && git clone <repo-url> turboshield && cd turboshield
+# 3. Deploy stack (semua path host auto-detect dari direktori ini)
 docker compose up -d
 
-# 3. Buka dashboard & setup admin
+# 4. Buka dashboard & setup admin
 #    http://<server-ip>:8181  → isi email → password digenerate
 ```
 
@@ -69,7 +71,7 @@ Detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 - [`docs/INSTALL.md`](docs/INSTALL.md) — instalasi lengkap langkah demi langkah
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — desain sistem & komponen
-- [`docs/REAL-IP.md`](docs/REAL-IP.md) — cara IP publik asli tercatat (Docker + nginx)
+- [`docs/REAL-IP.md`](docs/REAL-IP.md) — cara IP publik asli tercatat (Docker + nginx) + fix hairpin NAT saat proxy ke backend di container lain
 - [`docs/HARDENING.md`](docs/HARDENING.md) — hardening Docker & host
 - [`docs/USAGE.md`](docs/USAGE.md) — panduan pakai dashboard per menu
 

@@ -77,8 +77,6 @@ services:
       TS_MANAGED_RULE: "/waf/rules/aaa-turboshield-managed.conf"
       TS_CUSTOM_RULE: "/waf/rules/turboshield-custom.conf"
       TS_DATA_DIR: "/app/data"
-      TS_HOST_ACME: "/root/turboshield/waf/acme"
-      TS_HOST_LE: "/root/turboshield/waf/letsencrypt"
       TS_LE_LIVE: "/waf/letsencrypt/live"
     volumes:
       - ./dashboard:/app

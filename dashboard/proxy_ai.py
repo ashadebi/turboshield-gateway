@@ -18,6 +18,32 @@ AI_DB       = DATA_DIR / "ai_config.json"
 PROXY_DIR   = Path("/waf/proxy-hosts")
 CERTS_DIR   = Path("/waf/certs")
 ACME_DIR    = Path("/waf/acme")
+
+def _host_path_of(container_mount: str, fallback: str) -> str:
+    """Resolve the HOST-side path of a bind mount inside THIS container.
+    Lets the dashboard hand correct host paths to the certbot container it
+    launches via docker.sock — works from ANY install directory, no hardcoded
+    /root. Order: explicit env override → docker inspect self → fallback.
+    """
+    try:
+        cid = os.environ.get("HOSTNAME", "")  # container id (default docker hostname)
+        r = subprocess.run(
+            ["docker", "inspect", cid, "--format",
+             "{{range .Mounts}}{{.Source}}:{{.Destination}}\n{{end}}"],
+            capture_output=True, text=True, timeout=10)
+        for line in r.stdout.splitlines():
+            if ":" not in line:
+                continue
+            src, dst = line.rsplit(":", 1)
+            if dst == container_mount:
+                return src
+    except Exception:
+        pass
+    return fallback
+
+# Host path of the ./waf mount (for nested certbot container). Auto-detected;
+# env vars TS_HOST_ACME/TS_HOST_LE still override if set explicitly.
+_WAF_HOST = _host_path_of("/waf", "")
 WAF_CT      = os.environ.get("TS_WAF_CONTAINER", "ts-waf")
 for d in (PROXY_DIR, CERTS_DIR, ACME_DIR):
     try: d.mkdir(parents=True, exist_ok=True)
@@ -159,9 +185,16 @@ def request_letsencrypt(domain, email=""):
     dest.mkdir(parents=True, exist_ok=True)
     email_args = ["--email", email] if email else ["--register-unsafely-without-email"]
     # certbot webroot -> tulis challenge ke ACME_DIR (di-serve nginx di :80)
+    # Host path prioritas: env eksplisit → auto-detect mount ./waf → (kosong=gagal jelas)
+    host_acme = os.environ.get("TS_HOST_ACME") or (f"{_WAF_HOST}/acme" if _WAF_HOST else "")
+    host_le   = os.environ.get("TS_HOST_LE")   or (f"{_WAF_HOST}/letsencrypt" if _WAF_HOST else "")
+    if not host_acme or not host_le:
+        return False, ("Tidak bisa menentukan path host untuk certbot. "
+                       "Set env TS_HOST_ACME & TS_HOST_LE di docker-compose.yml, "
+                       "atau pastikan dashboard punya akses docker.sock untuk auto-detect.")
     cmd = ["docker","run","--rm",
-           "-v", f"{os.environ.get('TS_HOST_ACME','/root/turboshield/waf/acme')}:/var/www/acme",
-           "-v", f"{os.environ.get('TS_HOST_LE','/root/turboshield/waf/letsencrypt')}:/etc/letsencrypt",
+           "-v", f"{host_acme}:/var/www/acme",
+           "-v", f"{host_le}:/etc/letsencrypt",
            "certbot/certbot","certonly","--webroot","-w","/var/www/acme",
            "--non-interactive","--agree-tos"] + email_args + ["-d", domain]
     try:

@@ -1,4 +1,4 @@
-# Real IP — Menangkap IP Publik Asli Klien
+# Real IP & Cross-Network Routing — Menangkap IP Publik Asli & Menghindari Hairpin NAT
 
 ## Masalah
 
@@ -75,10 +75,54 @@ curl -H 'X-Forwarded-For: 203.0.113.55' http://localhost/  # dari subnet trusted
 
 ---
 
+## Penyebab 3 — Hairpin NAT: WAF proxy_pass ke IP publik server sendiri (koneksi gagal total, bukan cuma IP salah)
+
+Kasus ini beda dari #1/#2: bukan IP yang tercatat salah, tapi **koneksi WAF → backend gagal total** (situs down/timeout). Terjadi ketika kamu mengarahkan upstream proxy host ke **IP publik server itu sendiri** (mis. `1.2.3.4:82`) padahal backend-nya adalah container Docker lain di server yang sama.
+
+**Kenapa gagal:** container `ts-waf` mencoba konek ke IP publik host dari *dalam* network Docker-nya sendiri. Ini disebut *hairpin NAT* / *NAT loopback* — paket harus keluar lewat interface publik lalu masuk lagi via port-forward, dan banyak setup Docker/iptables **tidak mendukung rute pulang-pergi ini**. Hasilnya: `curl` dari dalam container `ts-waf` ke `<ip-publik>:<port>` return `000` (connection refused/timeout), walau dari luar server port itu bisa diakses normal.
+
+**Gejala:** config nginx valid, cert ada, `ts-waf` healthy — tapi situs tidak bisa diakses dari luar sama sekali (bukan 403 WAF, tapi gagal connect/timeout di reverse proxy).
+
+### Solusi: proxy ke nama container di network Docker yang sama (bukan IP publik)
+
+1. Sambungkan `ts-waf` ke network Docker tempat backend berada:
+   ```bash
+   docker network connect <network_backend> ts-waf
+   ```
+2. Set **upstream** proxy host ke **nama container + port internal**, bukan IP publik:
+   ```
+   upstream: nama-container-backend:80      # BENAR — antar-container langsung
+   upstream: 103.x.x.x:82                    # SALAH — hairpin NAT, sering gagal
+   ```
+3. **Permanenkan** (`docker network connect` ad-hoc hilang saat container di-recreate) — edit `docker-compose.yml`:
+   ```yaml
+   networks:
+     tsnet:
+       driver: bridge
+     dev_default:          # nama network tempat backend berada
+       external: true
+   services:
+     waf:
+       networks: [tsnet, dev_default]
+   ```
+
+**Verifikasi:**
+```bash
+# harus 200, bukan 000
+docker exec ts-waf curl -s -o /dev/null -w "%{http_code}\n" http://nama-container-backend:80/
+```
+
+> Untuk backend aplikasi (bukan API), pertimbangkan set **WAF mode = DetectionOnly**
+> per-host dulu (menu Proxy → Edit → Proteksi WAF) untuk menghindari false-positive
+> pada form kompleks, sebelum pindah ke Blocking penuh.
+
+---
+
 ## Ringkasan
 
 | Skenario | Solusi |
 |---|---|
 | Klien akses langsung ke IP server | Docker `userland-proxy:false` |
 | Ada NAT/LB/CDN di depan | nginx `real_ip` + infra teruskan XFF |
-| Keduanya | Terapkan dua-duanya (defense in depth) |
+| Backend di container lain, situs down total (bukan cuma IP salah) | Hubungkan network + upstream via nama container, bukan IP publik |
+| Semua sekaligus | Terapkan ketiganya (defense in depth) |

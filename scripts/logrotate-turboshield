@@ -1,12 +1,16 @@
 # TurboShield — logrotate untuk audit log WAF (ModSecurity)
-# Pasang:
-#   sudo cp scripts/logrotate-turboshield /etc/logrotate.d/turboshield
+# Ini TEMPLATE — jangan pasang mentah-mentah. Placeholder __TS_DIR__ diganti
+# otomatis oleh scripts/setup-timezone-logrotate.sh sesuai direktori instalasi
+# aktual (bebas dari mana saja, tidak harus /root).
+#
+# Pasang manual (kalau tak pakai script):
+#   sudo sed "s#__TS_DIR__#$(pwd)#g" scripts/logrotate-turboshield > /etc/logrotate.d/turboshield
 #   sudo logrotate -v /etc/logrotate.d/turboshield   # tes
-# SESUAIKAN path bila deploy bukan di /root/turboshield.
+#
 # Catatan: logrotate TIDAK menerima komentar di ujung baris directive,
 # jadi semua penjelasan diletakkan sebagai baris komentar tersendiri.
 
-/root/turboshield/waf/logs/*.log {
+__TS_DIR__/waf/logs/*.log {
     # rotasi harian, simpan 14 arsip (~2 minggu)
     daily
     rotate 14
