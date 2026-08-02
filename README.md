@@ -1,6 +1,4 @@
-# 🛡️🐉 TurboShield Gateway
-
-<img src="assets/logo-256.png" alt="TurboShield Gateway logo — shield with a friendly dragon face sticking its tongue out" width="120" align="right">
+# 🛡️ TurboShield Gateway
 
 **WAF Reverse Proxy + Management Dashboard** — nginx + ModSecurity v3 + OWASP Core Rule Set, dengan panel administrasi berbasis web (FastAPI), manajemen proxy host ala Nginx Proxy Manager, SSL otomatis (Let's Encrypt) / upload sendiri, integrasi AI & monitoring, serta hardening Docker lengkap.
 
@@ -15,9 +13,10 @@
 | **WAF Engine** | nginx + ModSecurity v3 + OWASP CRS (SQLi, XSS, RCE, LFI, path traversal, scanner). Coraza-compatible (SecLang/CRS sama). |
 | **Dashboard** | Panel web port **8181**: setup wizard, login (session), health real-time, live threat feed, grafik. |
 | **WAF Control** | Toggle engine mode **On / Detection Only / Off**, anomaly threshold, editor custom rules — reload live. |
-| **Rate Limiting** | Per-IP/Header/Cookie/API-Key, per-path per-host, native nginx `limit_req` — real, bukan simulasi. |
-| **Bot Protection** | Allow-list (Google/Bing/Apple/FB/Telegram/Slack/Discord), Block-list (sqlmap/nikto/nmap/dst), Challenge-list (curl/python-requests/scraper) dgn mode Log/Block. |
 | **Proxy Manager** | CRUD proxy host (domain, upstream, scheme, WebSocket, block-exploits), **toggle WAF per-host**, custom nginx config. |
+| **Streams** | TCP/UDP stream proxy ala NPM via `ts-stream` (tanpa WAF karena bukan HTTP layer). |
+| **TV Portal** | Public TV/HLS/DASH portal: lightweight player, HLS rewrite/proxy, DASH playback. |
+| **Security Engines** | Coraza/ModSecurity sebagai primary WAF + CrowdSec sebagai IPS/reputation layer dengan firewall bouncer. |
 | **SSL Manager** | Let's Encrypt otomatis (certbot) **atau** upload sertifikat sendiri, per-host. |
 | **AI Integration** | Gemini / OpenAI / Claude / OpenRouter / Ollama / Custom + n8n webhook. Test koneksi. |
 | **Monitoring** | LibreNMS (X-Auth-Token), Telegram bot (alert + kirim password admin saat setup). |
@@ -30,21 +29,18 @@
 ## 🚀 Instalasi Cepat
 
 ```bash
-# 1. Clone ke direktori pilihanmu — bebas, tidak harus /opt (bisa /srv, ~/, dll.)
-git clone https://github.com/ashadebi/turboshield-gateway.git turboshield && cd turboshield
-
-# 2. Install Docker + hardening (Debian/Ubuntu)
+# 1. Install Docker + hardening (Debian/Ubuntu)
 sudo bash scripts/install-docker-hardened.sh
 
-# 3. Deploy stack (semua path host auto-detect dari direktori ini)
+# 2. Deploy stack
+cd /opt && git clone <repo-url> turboshield && cd turboshield
 docker compose up -d
 
-# 4. Buka dashboard & setup admin
+# 3. Buka dashboard & setup admin
 #    http://<server-ip>:8181  → isi email → password digenerate
 ```
 
-📖 **Baru pertama kali? Ikuti panduan lengkap langkah-demi-langkah:** [`docs/INSTALL.md`](docs/INSTALL.md)
-📘 **Sudah jalan, mau tahu cara pakai tiap menu?** [`docs/USAGE.md`](docs/USAGE.md)
+Detail lengkap: [`docs/INSTALL.md`](docs/INSTALL.md).
 
 ---
 
@@ -70,13 +66,25 @@ docker compose up -d
 
 Detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
+### Optional: CrowdSec + bouncer
+
+TurboShield can run CrowdSec beside Coraza/ModSecurity:
+
+```bash
+docker compose --profile crowdsec up -d crowdsec
+apt-get install -y crowdsec-firewall-bouncer
+systemctl enable --now crowdsec-firewall-bouncer
+```
+
+Recommended mode: Coraza/ModSecurity stays primary WAF; CrowdSec reads nginx/ModSecurity logs and firewall-bouncer enforces IP bans.
+
 ---
 
 ## 📚 Dokumentasi
 
 - [`docs/INSTALL.md`](docs/INSTALL.md) — instalasi lengkap langkah demi langkah
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — desain sistem & komponen
-- [`docs/REAL-IP.md`](docs/REAL-IP.md) — cara IP publik asli tercatat (Docker + nginx) + fix hairpin NAT saat proxy ke backend di container lain
+- [`docs/REAL-IP.md`](docs/REAL-IP.md) — cara IP publik asli tercatat (Docker + nginx)
 - [`docs/HARDENING.md`](docs/HARDENING.md) — hardening Docker & host
 - [`docs/USAGE.md`](docs/USAGE.md) — panduan pakai dashboard per menu
 
@@ -86,15 +94,14 @@ Detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ```
 turboshield/
-├── docker-compose.yml          # stack: waf + dashboard + testapp
+├── docker-compose.yml          # stack: waf + dashboard + testapp + stream + optional crowdsec
 ├── dashboard/                  # FastAPI app (backend + static UI)
 │   ├── app.py                  # API: auth, WAF, proxy, SSL, AI, monitoring
 │   ├── proxy_ai.py             # proxy host generator + SSL + integrasi
-│   ├── ratelimit.py            # rate limiting: rules + nginx zone generator
-│   ├── botprotect.py           # bot protection: allow/challenge/block by UA
-│   └── static/                 # setup.html, login.html, dashboard.html
-├── waf/                        # config WAF (rules, realip, proxy-hosts, rate-limit zones)
-├── assets/                     # logo (SVG source + PNG exports)
+│   ├── stream_proxy.py         # TCP/UDP stream CRUD + nginx stream config
+│   └── static/                 # setup.html, login.html, dashboard.html, tv.html
+├── waf/                        # config WAF (rules, realip, proxy-hosts, streams)
+├── crowdsec/                   # CrowdSec acquis/config/data mounts (runtime data ignored)
 ├── scripts/                    # install-docker-hardened.sh (+ tweak)
 └── docs/                       # dokumentasi
 ```

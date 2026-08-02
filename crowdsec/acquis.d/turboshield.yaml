@@ -1,0 +1,9 @@
+filenames:
+  - /var/log/turboshield/modsec_audit.log
+labels:
+  type: modsecurity
+---
+filenames:
+  - /var/log/turboshield/nginx_access.log
+labels:
+  type: nginx

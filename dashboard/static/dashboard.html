@@ -84,11 +84,13 @@ button.save:hover{background:#34489a}
     <a data-p="dash" class="active">📊 Dashboard</a>
     <div class="sec">Keamanan</div>
     <a data-p="waf">🛡️ WAF &amp; Security</a>
+    <a data-p="engines">🧩 Security Engines</a>
     <a data-p="threats">🚨 Threat Log</a>
     <a data-p="ratelimit">⏱️ Rate Limiting</a>
     <a data-p="botprotect">🤖 Bot Protection</a>
     <div class="sec">Jaringan</div>
     <a data-p="proxy">🌐 Proxy &amp; Routing</a>
+    <a data-p="streams">🔀 Streams</a>
     <div class="sec">Kecerdasan</div>
     <a data-p="ai">🤖 AI &amp; Automation</a>
     <a data-p="integ">📡 Integrasi &amp; Monitoring</a>
@@ -149,6 +151,22 @@ button.save:hover{background:#34489a}
       <textarea id="custom" rows="12" class="mono"></textarea>
       <button class="save" onclick="saveCustom()">💾 Simpan Custom Rules &amp; Reload</button>
       <div class="msg" id="custom-msg"></div>
+    </div>
+  </div>
+
+
+  <!-- SECURITY ENGINES -->
+  <div class="page" id="p-engines">
+    <div class="panel">
+      <h3>🧩 Security Engines</h3>
+      <p style="color:var(--mut);font-size:13px">Mode aktif: Coraza/ModSecurity sebagai primary WAF + CrowdSec sebagai extra IPS/reputation layer. open-appsec diskip dulu.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="border:1px solid var(--line);border-radius:10px;padding:14px"><b>Primary WAF: Coraza / ModSecurity CRS</b><p class="mono" id="eng-coraza">loading</p><span class="pill">aktif</span><p style="color:var(--mut);font-size:12px;margin-top:10px">Mendeteksi dan memblokir serangan HTTP per request via OWASP CRS.</p></div>
+        <div style="border:1px solid var(--line);border-radius:10px;padding:14px"><b>Extra Protection: CrowdSec</b><p class="mono" id="eng-crowdsec">loading</p><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px"><label><input type="checkbox" id="eng-crowdsec-enabled" style="width:auto"> Aktifkan CrowdSec</label><button class="btn small" onclick="refreshCrowdsec()">🔄 Status</button></div><label style="display:block;margin-top:8px">Mode</label><select id="eng-crowdsec-mode"><option value="detect">Detect only</option><option value="block">Block (butuh bouncer)</option></select><p style="color:var(--mut);font-size:12px;margin-top:10px">Membaca log Coraza/nginx lalu membuat keputusan ban IP. Blocking butuh bouncer.</p></div>
+      </div>
+      <button class="save" style="margin-top:14px" onclick="saveEngines()">💾 Simpan Pilihan</button>
+      <button class="btn small" style="margin-left:8px" onclick="reloadCrowdsec()">♻️ Restart CrowdSec/Bouncer</button>
+      <div class="msg" id="eng-msg"></div>
     </div>
   </div>
 
@@ -306,6 +324,35 @@ button.save:hover{background:#34489a}
     </div>
   </div>
 
+
+
+  <!-- STREAMS -->
+  <div class="page" id="p-streams">
+    <div class="panel">
+      <h3>🔀 Streams <button class="save" style="margin:0 0 0 auto;padding:7px 14px" onclick="openStreamForm()">➕ Tambah Stream</button></h3>
+      <p style="color:var(--mut);font-size:13px">TCP/UDP forwarding seperti Nginx Proxy Manager Streams. Catatan: stream tidak melewati ModSecurity/WAF HTTP.</p>
+      <table><thead><tr><th>Nama</th><th>Listen</th><th>Protocol</th><th>Forward To</th><th>Status</th><th>Aksi</th></tr></thead>
+      <tbody id="streams-tbl"><tr><td colspan="6" style="color:var(--mut)">Memuat…</td></tr></tbody></table>
+      <div class="msg" id="streams-msg"></div>
+    </div>
+    <div class="panel" id="stream-form" style="margin-top:16px;display:none">
+      <h3 id="stream-form-title">➕ Tambah Stream</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div><label>Nama</label><input id="s-name" placeholder="mysql-prod"/></div>
+        <div><label>Listen Port</label><input id="s-listen" type="number" min="1" max="65535" placeholder="3306"/></div>
+        <div><label>Protocol</label><select id="s-proto"><option value="tcp">TCP</option><option value="udp">UDP</option></select></div>
+        <div><label>Upstream Host</label><input id="s-uphost" placeholder="10.1.1.10 atau container-name"/></div>
+        <div><label>Upstream Port</label><input id="s-upport" type="number" min="1" max="65535" placeholder="3306"/></div>
+        <div><label>Aktif</label><select id="s-enabled"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></div>
+      </div>
+      <div style="margin-top:14px">
+        <button class="save" onclick="saveStream()">💾 Simpan &amp; Reload Streams</button>
+        <button class="save" style="background:var(--lav);color:var(--navy)" onclick="closeStreamForm()">Batal</button>
+      </div>
+      <div class="msg" id="stream-msg"></div>
+    </div>
+  </div>
+
   <!-- AI -->
   <div class="page" id="p-ai">
     <div class="panel">
@@ -375,12 +422,12 @@ button.save:hover{background:#34489a}
 <script>
 let chartCat=null;
 const nav=document.getElementById('nav');
-const titles={dash:'Dashboard',waf:'WAF & Security',threats:'Threat Log',ratelimit:'Rate Limiting',botprotect:'Bot Protection',proxy:'Proxy & Routing',ai:'AI & Automation',integ:'Integrasi & Monitoring'};
+const titles={dash:'Dashboard',waf:'WAF & Security',engines:'Security Engines',threats:'Threat Log',ratelimit:'Rate Limiting',botprotect:'Bot Protection',proxy:'Proxy & Routing',streams:'Streams',ai:'AI & Automation',integ:'Integrasi & Monitoring'};
 nav.addEventListener('click',e=>{const a=e.target.closest('a');if(!a)return;
   document.querySelectorAll('.nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');
   const p=a.dataset.p;document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   document.getElementById('p-'+p).classList.add('active');document.getElementById('ptitle').textContent=titles[p];
-  if(p==='waf')loadWaf();if(p==='threats')loadThreats();if(p==='proxy')loadHosts();if(p==='ai')loadAI();if(p==='integ')loadIntegrations();if(p==='ratelimit')loadRateLimits();if(p==='botprotect')loadBotProtect();
+  if(p==='waf')loadWaf();if(p==='engines')loadEngines();if(p==='threats')loadThreats();if(p==='proxy')loadHosts();if(p==='streams')loadStreams();if(p==='ai')loadAI();if(p==='integ')loadIntegrations();if(p==='ratelimit')loadRateLimits();if(p==='botprotect')loadBotProtect();
 });
 function badge(c){const m={sqli:'SQL Injection',xss:'XSS',rce:'RCE',lfi:'LFI/Traversal',anomaly:'Anomaly'};
   const cls=['sqli','xss','rce','lfi','anomaly'].includes(c)?c:'def';return `<span class="badge ${cls}">${m[c]||c}</span>`;}
@@ -455,6 +502,30 @@ async function loadThreats(){
   t.innerHTML=j.threats.map(x=>`<tr><td class="mono">${(x.time||'').slice(0,25)}</td><td class="mono">${x.ip}</td><td>${x.method}</td><td class="mono">${x.uri}</td><td>${x.categories.map(badge).join(' ')}</td><td class="mono" style="font-size:11px">${(x.messages||[]).join('; ').slice(0,80)}</td></tr>`).join('');
 }
 async function logout(){await fetch('/api/logout',{method:'POST'});location.href='/';}
+
+
+
+// ============ SECURITY ENGINES ============
+async function loadEngines(){
+ const r=await fetch('/api/security-engines'); const j=await r.json(); const c=j.config||{}, st=j.status||{};
+ document.getElementById('eng-coraza').textContent=JSON.stringify(st.coraza||{});
+ document.getElementById('eng-crowdsec').textContent=JSON.stringify(st.crowdsec||{},null,2);
+ document.getElementById('eng-crowdsec-enabled').checked=!!(c.crowdsec&&c.crowdsec.enabled);
+ document.getElementById('eng-crowdsec-mode').value=(c.crowdsec&&c.crowdsec.mode)||'detect';
+}
+async function saveEngines(){
+ const b=new URLSearchParams({crowdsec_enabled:document.getElementById('eng-crowdsec-enabled').checked,crowdsec_mode:document.getElementById('eng-crowdsec-mode').value});
+ const m=document.getElementById('eng-msg');
+ try{const r=await fetch('/api/security-engines',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b}); const j=await r.json(); m.className='msg '+(r.ok?'ok':'err'); m.textContent=(r.ok?'✅ ':'⚠️ ')+(j.note||j.detail||'saved'); loadEngines();}catch(e){m.className='msg err';m.textContent=e.message;}
+}
+}
+async function refreshCrowdsec(){
+ const r=await fetch('/api/security-engines'); const j=await r.json(); const st=j.status&&j.status.crowdsec||{}; document.getElementById('eng-crowdsec').textContent=JSON.stringify(st,null,2); }
+async function reloadCrowdsec(){
+ const m=document.getElementById('eng-msg');
+ try{const r=await fetch('/api/security-engines/crowdsec/reload',{method:'POST'}); const j=await r.json(); m.className='msg '+(r.ok?'ok':'err'); m.textContent='✅ CrowdSec reload done'; await loadEngines();}catch(e){m.className='msg err';m.textContent=e.message;}
+}
+
 
 // ============ PROXY MANAGER ============
 let AI_PROVIDERS={}; let editingDomain=null; let HOSTS=[];
@@ -534,6 +605,22 @@ async function uploadCert(){const domain=document.getElementById('ssl-panel').da
     m.className='msg ok';m.textContent='✅ '+j.message+(j.cert_info?'\\n'+j.cert_info:'');loadHosts();
   }catch(e){m.className='msg err';m.textContent='Error: '+e.message;}
 }
+
+
+
+// ============ STREAMS ============
+let STREAMS=[]; let editingStream=null;
+async function loadStreams(){
+  const r=await fetch('/api/streams'); const j=await r.json(); STREAMS=j.streams||[];
+  const t=document.getElementById('streams-tbl');
+  if(!STREAMS.length){t.innerHTML='<tr><td colspan="6" style="color:var(--mut)">Belum ada stream. Klik "Tambah Stream".</td></tr>';return;}
+  t.innerHTML=STREAMS.map((s,idx)=>`<tr><td class="mono">${s.name}</td><td class="mono">:${s.listen_port}</td><td>${(s.protocol||'tcp').toUpperCase()}</td><td class="mono">${s.upstream_host}:${s.upstream_port}</td><td>${s.enabled?'<span class="pill">aktif</span>':'<span class="pill off">nonaktif</span>'}</td><td><button class="save" style="padding:4px 10px;margin:0" onclick="editStream(${idx})">✏️</button> <button class="save" style="padding:4px 10px;margin:0;background:#fde8e8;color:#c0392b" onclick="delStream('${s.name}')">🗑️</button></td></tr>`).join('');
+}
+function openStreamForm(){editingStream=null;document.getElementById('stream-form-title').textContent='➕ Tambah Stream';['s-name','s-listen','s-uphost','s-upport'].forEach(i=>document.getElementById(i).value='');document.getElementById('s-name').disabled=false;document.getElementById('s-proto').value='tcp';document.getElementById('s-enabled').value='true';document.getElementById('stream-form').style.display='block';document.getElementById('stream-msg').className='msg';}
+function closeStreamForm(){document.getElementById('stream-form').style.display='none';}
+function editStream(idx){const s=STREAMS[idx]; if(!s)return; editingStream=s.name;document.getElementById('stream-form-title').textContent='✏️ Edit: '+s.name;document.getElementById('s-name').value=s.name;document.getElementById('s-name').disabled=true;document.getElementById('s-listen').value=s.listen_port;document.getElementById('s-proto').value=s.protocol||'tcp';document.getElementById('s-uphost').value=s.upstream_host;document.getElementById('s-upport').value=s.upstream_port;document.getElementById('s-enabled').value=String(s.enabled!==false);document.getElementById('stream-form').style.display='block';document.getElementById('stream-msg').className='msg';}
+async function saveStream(){const m=document.getElementById('stream-msg');const b=new URLSearchParams({name:document.getElementById('s-name').value,listen_port:document.getElementById('s-listen').value,protocol:document.getElementById('s-proto').value,upstream_host:document.getElementById('s-uphost').value,upstream_port:document.getElementById('s-upport').value,enabled:document.getElementById('s-enabled').value});try{const r=await fetch('/api/streams',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});const j=await r.json();if(!r.ok){m.className='msg err';m.textContent='⚠️ '+(j.detail||'Gagal');return;}m.className='msg ok';m.textContent='✅ Stream tersimpan & service stream reload.';loadStreams();setTimeout(closeStreamForm,900);}catch(e){m.className='msg err';m.textContent='Error: '+e.message;}}
+async function delStream(name){if(!confirm('Hapus stream '+name+'?'))return;await fetch('/api/streams/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({name})});loadStreams();}
 
 // ============ AI INTEGRATION ============
 async function loadAI(){
@@ -737,8 +824,8 @@ function toggleTheme(){const dark=document.body.classList.toggle('dark');
 
 // ============ i18n (dictionary phrase-based, full coverage) ============
 const NAV={
-  id:{dash:'Dashboard',waf:'WAF & Security',threats:'Threat Log',ratelimit:'Rate Limiting',botprotect:'Bot Protection',proxy:'Proxy & Routing',ai:'AI & Automation',integ:'Integrasi & Monitoring'},
-  en:{dash:'Dashboard',waf:'WAF & Security',threats:'Threat Log',ratelimit:'Rate Limiting',botprotect:'Bot Protection',proxy:'Proxy & Routing',ai:'AI & Automation',integ:'Integrations & Monitoring'}
+  id:{dash:'Dashboard',waf:'WAF & Security',engines:'Security Engines',threats:'Threat Log',ratelimit:'Rate Limiting',botprotect:'Bot Protection',proxy:'Proxy & Routing',streams:'Streams',ai:'AI & Automation',integ:'Integrasi & Monitoring'},
+  en:{dash:'Dashboard',waf:'WAF & Security',engines:'Security Engines',threats:'Threat Log',ratelimit:'Rate Limiting',botprotect:'Bot Protection',proxy:'Proxy & Routing',streams:'Streams',ai:'AI & Automation',integ:'Integrations & Monitoring'}
 };
 // Peta terjemahan frasa ID -> EN untuk seluruh teks statis
 const T={

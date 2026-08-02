@@ -174,6 +174,9 @@ from fastapi.staticfiles import StaticFiles
 
 @app.get("/", response_class=HTMLResponse)
 def root(request: Request):
+    host = (request.headers.get("host") or "").split(":")[0].lower()
+    if host == "tv.teelee.my.id":
+        return HTMLResponse(Path("/app/static/tv.html").read_text())
     if load_admin() is None:
         return HTMLResponse(Path("/app/static/setup.html").read_text())
     if valid_session(request.cookies.get("ts_session")):
@@ -567,3 +570,231 @@ def api_tg_test(email: str = Depends(require_auth),
         token = cfg["telegram"]["token"]
     ok, msg = PX.test_telegram(token, chat_id)
     return {"status": "ok" if ok else "failed", "message": msg}
+
+
+# ================= ROUTES: STREAMS (TCP/UDP, NPM-like) =================
+import stream_proxy as SP
+
+@app.get("/api/streams")
+def api_streams_list(email: str = Depends(require_auth)):
+    return {"streams": SP.load_streams(), "stream_status": SP.status()}
+
+@app.post("/api/streams")
+def api_streams_save(email: str = Depends(require_auth),
+                     name: str = Form(...), listen_port: int = Form(...),
+                     protocol: str = Form("tcp"), upstream_host: str = Form(...),
+                     upstream_port: int = Form(...), enabled: str = Form("true")):
+    try:
+        name, lp, proto, uh, up = SP.validate(name, listen_port, protocol, upstream_host, upstream_port)
+    except Exception as e:
+        raise HTTPException(400, str(e))
+    items = SP.load_streams()
+    old = next((x for x in items if x.get("name") == name), None)
+    # unique listen port/protocol among enabled streams except self
+    for x in items:
+        if x.get("name") != name and x.get("enabled", True) and int(x.get("listen_port",0)) == lp and x.get("protocol","tcp") == proto:
+            raise HTTPException(400, f"Port {lp}/{proto} sudah dipakai stream '{x.get('name')}'.")
+    rec = old or {"name": name, "created": datetime.now(timezone.utc).isoformat()}
+    rec.update({"listen_port": lp, "protocol": proto, "upstream_host": uh, "upstream_port": up,
+                "enabled": enabled == "true", "updated": datetime.now(timezone.utc).isoformat()})
+    if not old: items.append(rec)
+    if rec["enabled"]: SP.write_conf(rec)
+    else: SP.remove_conf(name)
+    ok,msg = SP.test_config()
+    if not ok:
+        SP.remove_conf(name)
+        raise HTTPException(400, "Config stream invalid:\n" + msg[-400:])
+    SP.save_streams(items)
+    rok,rmsg = SP.reload_stream()
+    return {"status":"ok" if rok else "reload_failed", "reload_msg": rmsg, "stream": rec}
+
+@app.post("/api/streams/delete")
+def api_streams_delete(email: str = Depends(require_auth), name: str = Form(...)):
+    items=[x for x in SP.load_streams() if x.get("name") != name]
+    SP.save_streams(items); SP.remove_conf(name)
+    ok,msg=SP.test_config()
+    if ok: rok,rmsg=SP.reload_stream()
+    else: rok,rmsg=False,msg
+    return {"status":"ok" if rok else "reload_failed", "reload_msg":rmsg}
+
+
+# ================= TV Teelee public HLS dashboard (no auth) =================
+import base64, urllib.parse, urllib.request
+from fastapi.responses import PlainTextResponse, StreamingResponse
+
+TV_CHANNELS = [
+ {"id":"tvri-nasional","name":"TVRI Nasional","group":"TVRI","url":"https://ott-balancer.tvri.go.id/live/eds/Nasional/hls/Nasional.m3u8","note":"Official TVRI HLS"},
+ {"id":"tvri-world","name":"TVRI World","group":"TVRI","url":"https://ott-balancer.tvri.go.id/live/eds/TVRIWorld/hls/TVRIWorld.m3u8","note":"Official TVRI HLS"},
+ {"id":"tvri-sport","name":"TVRI Sport","group":"TVRI","url":"https://ott-balancer.tvri.go.id/live/eds/SportHD/hls/SportHD.m3u8","note":"Official TVRI HLS"},
+ {"id":"tvri-aceh","name":"TVRI Aceh","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Aceh/hls/Aceh.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-bali","name":"TVRI Bali","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Bali/hls/Bali.m3u8","note":"Official TVRI HLS"},
+ {"id":"tvri-babel","name":"TVRI Bangka Belitung","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Babel/hls/Babel.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-bengkulu","name":"TVRI Bengkulu","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Bengkulu/hls/Bengkulu.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-gorontalo","name":"TVRI Gorontalo","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Gorontalo/hls/Gorontalo.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-jabar","name":"TVRI Jawa Barat","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Jabar/hls/Jabar.m3u8","note":"Official TVRI HLS"},
+ {"id":"tvri-jateng","name":"TVRI Jawa Tengah","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Jateng/hls/Jateng.m3u8","note":"Official TVRI HLS"},
+ {"id":"tvri-jatim","name":"TVRI Jawa Timur","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Jatim/hls/Jatim.m3u8","note":"Official TVRI HLS"},
+ {"id":"tvri-kalbar","name":"TVRI Kalimantan Barat","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Kalbar/hls/Kalbar.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-kalsel","name":"TVRI Kalimantan Selatan","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Kalsel/hls/Kalsel.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-kalteng","name":"TVRI Kalimantan Tengah","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Kalteng/hls/Kalteng.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-kaltim","name":"TVRI Kalimantan Timur","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Kaltim/hls/Kaltim.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-lampung","name":"TVRI Lampung","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Lampung/hls/Lampung.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-maluku","name":"TVRI Maluku","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Ambon/hls/Ambon.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-sulut","name":"TVRI North Sulawesi","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Sulut/hls/Sulut.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-sumut","name":"TVRI North Sumatra","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Sumut/hls/Sumut.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-ntb","name":"TVRI Nusa Tenggara Barat","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/NTB/hls/NTB.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-ntt","name":"TVRI Nusa Tenggara Timur","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/NTT/hls/NTT.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-papua","name":"TVRI Papua","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Papua/hls/Papua.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-riau","name":"TVRI Riau","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Riau/hls/Riau.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-sulbar","name":"TVRI Sulawesi Barat","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Sulbar/hls/Sulbar.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-sulsel","name":"TVRI Sulawesi Selatan","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Sulsel/hls/Sulsel.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-sulteng","name":"TVRI Sulawesi Tengah","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Sulteng/hls/Sulteng.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-sultra","name":"TVRI Sulawesi Tenggara","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Sultra/hls/Sultra.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-sumbar","name":"TVRI Sumatera Barat","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Sumbar/hls/Sumbar.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-sumsel","name":"TVRI Sumatera Selatan","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Sumsel/hls/Sumsel.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-pabar","name":"TVRI West Papua","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Pabar/hls/Pabar.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"tvri-jogja","name":"TVRI Yogyakarta","group":"TVRI Daerah","url":"https://ott-balancer.tvri.go.id/live/eds/Jogjakarta/hls/Jogjakarta.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"sctv-video","name":"SCTV (Video)","group":"DASH","url":"https://tvratu.my.id/vid/index.mpd?id=204&type=dash","note":"DASH source dhanytv, tested playlist OK"},
+ {"id":"indosiar-video","name":"Indosiar (Video)","group":"DASH","url":"https://tvratu.my.id/vid/index.mpd?id=205&type=dash","note":"DASH source dhanytv, tested playlist OK"},
+ {"id":"rcti-dash","name":"RCTI","group":"DASH","url":"https://cdnbal1.indihometv.com/atm/DASH/rcti/rcti-avc1_2500000=7-3277707030000000.mpd","note":"DASH source dhanytv, tested playlist OK"},
+ {"id":"kompas-tv-dash","name":"Kompas TV","group":"DASH","url":"https://cdnbal1.indihometv.com/atm/DASH/KOMPAS_TV/KOMPAS_TV-avc1_2500000=7-3277707030000000.mpd","note":"DASH source dhanytv, tested playlist OK"},
+ {"id":"metro-tv","name":"Metro TV","group":"FTA News","url":"https://edge.medcom.id/live-edge/smil:metro.smil/playlist.m3u8","note":"Stable HLS"},
+ {"id":"cnn-indonesia","name":"CNN Indonesia","group":"News","url":"https://live.cnnindonesia.com/livecnn/smil:cnntv.smil/playlist.m3u8","note":"Tested OK"},
+ {"id":"cnbc-indonesia","name":"CNBC Indonesia","group":"News","url":"https://live.cnbcindonesia.com/livecnbc/smil:cnbctv.smil/playlist.m3u8","note":"Tested OK"},
+ {"id":"rri-net","name":"RRI Net","group":"FTA Public","url":"https://private-streaming.rri.go.id/memfs/6f77c7b5-feb2-4935-9f89-e7e9fca0a54a_output_0.m3u8","note":"RRI HLS"},
+ {"id":"rtv","name":"RTV","group":"FTA Lokal","url":"https://rtvstream.rtv.co.id:4555/hls/rtv.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"nusantara-tv","name":"Nusantara TV","group":"FTA Lokal","url":"https://nusantaratv.siar.us/nusantaratv/live/playlist.m3u8","note":"Tested OK"},
+ {"id":"garuda-tv","name":"Garuda TV","group":"FTA Lokal","url":"https://hgmtv.com:19360/garudatvlivestreaming/480p.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"daai-tv","name":"DAAI TV","group":"FTA Lokal","url":"https://pull.daaiplus.com/live-DAAIPLUS/live-DAAIPLUS_HD.m3u8","note":"Source dhanytv alt, HLS"},
+ {"id":"rodja-tv","name":"Rodja TV","group":"Religious","url":"https://rodjatv.com/rodjatv/live.m3u8","note":"Tested OK"},
+ {"id":"brtv","name":"BRTV","group":"FTA Lokal","url":"https://live.artidijitalmedya.com/artidijital_brtv/brtv/playlist.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"banjar-tv","name":"BanjarTV","group":"FTA Lokal","url":"https://banjartv.siar.us/banjartv/live/playlist.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"caruban-tv","name":"CarubanTV","group":"FTA Lokal","url":"https://stream.carubantv.id/hls/0/stream.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"fgtv","name":"FGTV","group":"FTA Lokal","url":"https://fgtvlive.fgtv.com/smil:fgtv.smil/playlist.m3u8","note":"Source dhanytv, tested OK"},
+ {"id":"biznet-adventure","name":"Biznet Adventure","group":"Public Channel","url":"http://livestream.biznetvideo.net/biznet_adventure/smil:adventure.smil/playlist.m3u8","note":"Tested OK"},
+ {"id":"biznet-kids","name":"Biznet Kids","group":"Public Channel","url":"http://livestream.biznetvideo.net/biznet_kids/smil:kids.smil/index.m3u8","note":"Tested OK"},
+ {"id":"biznet-lifestyle","name":"Biznet Lifestyle","group":"Public Channel","url":"http://livestream.biznetvideo.net/biznet_lifestyle/smil:lifestyle.smil/index.m3u8","note":"Tested OK"},
+]
+
+
+
+def _tv_chan(cid): return next((c for c in TV_CHANNELS if c["id"] == cid), None)
+def _b64u(x): return base64.urlsafe_b64encode(x.encode()).decode().rstrip('=')
+def _unb64u(x): return base64.urlsafe_b64decode((x+'='*(-len(x)%4)).encode()).decode()
+def _tv_fetch(url):
+    req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 TurboShield-TV/1.0","Accept":"*/*"})
+    return urllib.request.urlopen(req,timeout=20)
+
+@app.get("/api/tv/channels")
+def api_tv_channels(): return {"channels":TV_CHANNELS}
+
+@app.get("/api/tv/playlist/{cid}")
+def api_tv_playlist(cid: str):
+    c=_tv_chan(cid)
+    if not c: raise HTTPException(404,"channel not found")
+    try: txt=_tv_fetch(c["url"]).read().decode('utf-8','replace')
+    except Exception as e: raise HTTPException(502,f"upstream playlist error: {e}")
+    if '.mpd' in urllib.parse.urlparse(c["url"]).path or 'type=dash' in c["url"]:
+        return PlainTextResponse(txt, media_type='application/dash+xml')
+    out=[]
+    for line in txt.splitlines():
+        st=line.strip()
+        if not st or st.startswith('#'):
+            if 'URI="' in line:
+                def rep(m): return 'URI="/api/tv/proxy/%s?u=%s"' % (cid,_b64u(urllib.parse.urljoin(c["url"],m.group(1))))
+                line=re.sub(r'URI="([^"]+)"',rep,line)
+            out.append(line); continue
+        out.append('/api/tv/proxy/%s?u=%s' % (cid,_b64u(urllib.parse.urljoin(c["url"],st))))
+    return PlainTextResponse('\n'.join(out)+'\n',media_type='application/vnd.apple.mpegurl')
+
+def _tv_rewrite_playlist(cid: str, base_url: str, txt: str) -> str:
+    out=[]
+    for line in txt.splitlines():
+        st=line.strip()
+        if not st or st.startswith('#'):
+            if 'URI="' in line:
+                def rep(m): return 'URI="/api/tv/proxy/%s?u=%s"' % (cid,_b64u(urllib.parse.urljoin(base_url,m.group(1))))
+                line=re.sub(r'URI="([^"]+)"',rep,line)
+            out.append(line); continue
+        out.append('/api/tv/proxy/%s?u=%s' % (cid,_b64u(urllib.parse.urljoin(base_url,st))))
+    return '\n'.join(out)+'\n'
+
+@app.get("/api/tv/proxy/{cid}")
+def api_tv_proxy(cid: str, u: str):
+    if not _tv_chan(cid): raise HTTPException(404,"channel not found")
+    try:
+        url=_unb64u(u)
+        if not url.startswith(('http://','https://')): raise ValueError('bad url')
+        r=_tv_fetch(url)
+        ctype=r.headers.get('Content-Type') or 'application/octet-stream'
+        if '.m3u8' in urllib.parse.urlparse(url).path or 'mpegurl' in ctype.lower():
+            txt=r.read().decode('utf-8','replace')
+            return PlainTextResponse(_tv_rewrite_playlist(cid,url,txt),media_type='application/vnd.apple.mpegurl')
+    except Exception as e: raise HTTPException(502,f"upstream segment error: {e}")
+    return StreamingResponse(r,media_type=ctype)
+
+@app.get("/tv", response_class=HTMLResponse)
+def tv_page_public(): return HTMLResponse(Path('/app/static/tv.html').read_text())
+
+
+
+# ================= ROUTES: SECURITY ENGINES =================
+ENGINES_DB = DATA_DIR / "security_engines.json"
+
+def _engines_default():
+    return {"waf":"coraza","crowdsec":{"enabled":True,"mode":"detect"}}
+
+def load_engines():
+    if ENGINES_DB.exists():
+        try: return json.loads(ENGINES_DB.read_text())
+        except Exception: pass
+    return _engines_default()
+
+def save_engines(cfg):
+    cfg["waf"] = "coraza"  # open-appsec skipped for now
+    cfg["updated"] = datetime.now(timezone.utc).isoformat()
+    ENGINES_DB.write_text(json.dumps(cfg, indent=2)); os.chmod(ENGINES_DB,0o600)
+
+def _docker_status(name):
+    try:
+        r=subprocess.run(["docker","inspect","-f","{{.State.Status}}",name],capture_output=True,text=True,timeout=8)
+        return r.stdout.strip() if r.returncode==0 else "not_installed"
+    except Exception as e: return "error: "+str(e)
+
+def _crowdsec_status():
+    base={"container":_docker_status("ts-crowdsec"),"bouncer":_docker_status("crowdsec-firewall-bouncer")}
+    try:
+        r=subprocess.run(["systemctl","is-active","crowdsec-firewall-bouncer"],capture_output=True,text=True,timeout=8)
+        base["bouncer_service"]=(r.stdout or r.stderr).strip() or "unknown"
+    except Exception as e:
+        base["bouncer_service"]="error: "+str(e)
+    try:
+        r=subprocess.run(["docker","exec","ts-crowdsec","cscli","metrics"],capture_output=True,text=True,timeout=15)
+        base["metrics"]=(r.stdout or r.stderr).strip()
+    except Exception as e:
+        base["metrics"]="error: "+str(e)
+    return base
+
+@app.get("/api/security-engines")
+def api_security_engines(email: str = Depends(require_auth)):
+    cfg=load_engines()
+    return {"config":cfg,"status":{"coraza":waf_status(),"crowdsec":_crowdsec_status()}}
+
+@app.post("/api/security-engines")
+def api_security_engines_set(email: str = Depends(require_auth), crowdsec_enabled: str = Form("true"), crowdsec_mode: str = Form("detect")):
+    if crowdsec_mode not in ("detect","block"):
+        crowdsec_mode="detect"
+    cfg=load_engines(); cfg["waf"]="coraza"; cfg["crowdsec"]={"enabled": crowdsec_enabled == "true", "mode": crowdsec_mode}
+    save_engines(cfg)
+    return {"status":"ok","config":cfg,"note":"Coraza/ModSecurity tetap primary WAF. CrowdSec disimpan sebagai extra protection."}
+
+@app.post("/api/security-engines/crowdsec/reload")
+def api_security_engines_reload(email: str = Depends(require_auth)):
+    out=[]
+    for cmd in (["systemctl","restart","crowdsec-firewall-bouncer"],["docker","restart","ts-crowdsec"]):
+        try:
+            r=subprocess.run(cmd,capture_output=True,text=True,timeout=30)
+            out.append({"cmd":" ".join(cmd),"code":r.returncode,"stdout":r.stdout[-400:],"stderr":r.stderr[-400:]})
+        except Exception as e:
+            out.append({"cmd":" ".join(cmd),"error":str(e)})
+    return {"status":"ok","results":out}

@@ -63,6 +63,39 @@ services:
       - ./waf/acme:/var/www/acme
       - ./waf/logs:/var/log/turboshield
 
+  # -------- TCP/UDP Streams (NPM-like stream proxy, no WAF layer) --------
+  stream:
+    image: owasp/modsecurity-crs:nginx-alpine
+    container_name: ts-stream
+    restart: unless-stopped
+    network_mode: host
+    healthcheck:
+      disable: true
+    environment:
+      TZ: "Asia/Jakarta"
+    entrypoint: ["nginx", "-c", "/etc/nginx/nginx.conf", "-g", "daemon off;"]
+    volumes:
+      - ./waf/stream-nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./waf/streams.d:/etc/nginx/streams.d:ro
+
+  # -------- CrowdSec (optional IPS/reputation engine; detect mode first) --------
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: ts-crowdsec
+    restart: unless-stopped
+    profiles: ["crowdsec"]
+    networks: [tsnet]
+    ports:
+      - "127.0.0.1:8081:8080"   # local API for bouncer only
+    environment:
+      TZ: "Asia/Jakarta"
+      COLLECTIONS: "crowdsecurity/nginx crowdsecurity/http-cve crowdsecurity/modsecurity"
+    volumes:
+      - ./crowdsec/data:/var/lib/crowdsec/data
+      - ./crowdsec/config:/etc/crowdsec
+      - ./crowdsec/acquis.d:/etc/crowdsec/acquis.d:ro
+      - ./waf/logs:/var/log/turboshield:ro
+
   # -------- Dashboard administrasi (FastAPI) port 8181 --------
   dashboard:
     image: python:3.12-slim
@@ -74,6 +107,7 @@ services:
     working_dir: /app
     environment:
       TS_WAF_CONTAINER: "ts-waf"
+      TS_STREAM_CONTAINER: "ts-stream"
       TZ: "Asia/Jakarta"
       TS_AUDIT_LOG: "/waf/logs/modsec_audit.log"
       TS_MANAGED_RULE: "/waf/rules/aaa-turboshield-managed.conf"
