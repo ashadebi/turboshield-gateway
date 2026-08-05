@@ -119,9 +119,9 @@ button.save:hover{background:#34489a}
       <div class="stat r"><div class="lbl">🚨 Ancaman Diblokir</div><div class="num" id="s-threat">–</div><div class="sub">total di log</div></div>
     </div>
     <div class="grid2">
-      <div class="panel"><h3>📈 Serangan per Kategori</h3><canvas id="chart-cat" height="200"></canvas></div>
+      <div class="panel"><h3>📈 Serangan per Kategori</h3><div style="position:relative"><canvas id="chart-cat" height="200" style="background:var(--lav);border-radius:12px"></canvas><div id="chart-cat-empty" style="display:none;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:13px;font-weight:600;pointer-events:none">Belum ada serangan tercatat</div></div></div>
       <div class="panel"><h3>🌡️ System Health</h3>
-        <table><tbody id="health-tbl"></tbody></table>
+        <table><tbody id="health-tbl"><tr><td colspan="2" style="color:var(--mut)">Memuat…</td></tr></tbody></table>
       </div>
     </div>
     <div class="panel"><h3>🚨 Serangan Terbaru (Live Threat Feed)</h3>
@@ -459,12 +459,19 @@ async function loadOverview(){
     if(!j.recent.length){rt.innerHTML='<tr><td colspan="6" style="color:var(--mut)">Belum ada serangan tercatat. 🎉</td></tr>';}
     else{rt.innerHTML=j.recent.map(t=>`<tr><td class="mono">${(t.time||'').slice(0,25)}</td><td class="mono">${t.ip}</td><td>${t.method}</td><td class="mono">${t.uri}</td><td>${t.categories.map(badge).join(' ')}</td><td class="mono">${t.status}</td></tr>`).join('');}
     // chart
-    const cats=j.threat_by_cat;const labels=Object.keys(cats),data=Object.values(cats);
-    if(chartCat)chartCat.destroy();
-    chartCat=new Chart(document.getElementById('chart-cat'),{type:'doughnut',
-      data:{labels:labels.length?labels:['Belum ada'],datasets:[{data:data.length?data:[1],
-        backgroundColor:['#4058B0','#6f83d6','#1A2138','#8ea1e8','#c77f2e','#57b877','#b9c4e8']}]},
-      options:{plugins:{legend:{position:'bottom',labels:{color:getComputedStyle(document.body).getPropertyValue('--mut')||'#6b7394'}}}}});
+    const cats=j.threat_by_cat||{};const labels=Object.keys(cats),data=Object.values(cats);
+    const canvas=document.getElementById('chart-cat');
+    const empty=document.getElementById('chart-cat-empty');
+    if(empty) empty.style.display = labels.length ? 'none' : 'flex';
+    if(chartCat){try{chartCat.destroy();}catch(_e){} chartCat=null;}
+    if(typeof Chart === 'undefined'){
+      if(empty) empty.textContent='Chart library gagal dimuat';
+    } else if(labels.length){
+      chartCat=new Chart(canvas,{type:'doughnut',
+        data:{labels:labels,datasets:[{data:data,
+          backgroundColor:['#4058B0','#6f83d6','#1A2138','#8ea1e8','#c77f2e','#57b877','#b9c4e8']}]},
+        options:{plugins:{legend:{position:'bottom',labels:{color:getComputedStyle(document.body).getPropertyValue('--mut')||'#6b7394'}}}}});
+    }
   }catch(e){console.error(e);}
 }
 async function loadWaf(){
