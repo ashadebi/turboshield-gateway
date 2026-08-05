@@ -525,7 +525,6 @@ async function saveEngines(){
  const m=document.getElementById('eng-msg');
  try{const r=await fetch('/api/security-engines',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b}); const j=await r.json(); m.className='msg '+(r.ok?'ok':'err'); m.textContent=(r.ok?'✅ ':'⚠️ ')+(j.note||j.detail||'saved'); loadEngines();}catch(e){m.className='msg err';m.textContent=e.message;}
 }
-}
 async function refreshCrowdsec(){
  const r=await fetch('/api/security-engines'); const j=await r.json(); const st=j.status&&j.status.crowdsec||{}; document.getElementById('eng-crowdsec').textContent=JSON.stringify(st,null,2); }
 async function reloadCrowdsec(){
