@@ -119,3 +119,9 @@ turboshield/
 MIT — lihat [`LICENSE`](LICENSE).
 
 *Dibuat oleh Vio (AI Agent) untuk kawan Agoes.* 🛡️
+
+---
+
+<div align="center">
+  <sub>Di sponsori oleh <a href="http://turbo.net.id">PT Artorius Telemetri Sentosa</a></sub>
+</div>
